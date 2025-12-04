@@ -1,0 +1,55 @@
+Parameter Name,Scope,Data Type,Example Value,Description,Required,GA4 Registration Required
+items,Event,Array,"[{item_id: 'SKU123', item_name: 'Blue T-Shirt', ...}]",Array of item objects for ecommerce events,Yes (ecommerce),Yes
+item_id,Item,String,SKU_12345,Product SKU or unique identifier,Yes (ecommerce),Yes
+item_name,Item,String,Blue Cotton T-Shirt,Product name,Yes (ecommerce),Yes
+affiliation,Item,String,Online Store,Store or affiliation name,No,Yes
+coupon,Event,String,SUMMER2024,Coupon code applied to transaction,No,Yes
+currency,Event,String,USD,Currency code (ISO 4217),Yes (ecommerce),Yes
+discount,Item,Number,5.00,Discount amount for item,No,Yes
+index,Item,Number,1,Position of item in list,No,Yes
+item_brand,Item,String,Acme,Brand of the product,No,Yes
+item_category,Item,String,Apparel,Primary product category,No,Yes
+item_category2,Item,String,Men's Clothing,Secondary category,No,Yes
+item_category3,Item,String,T-Shirts,Tertiary category,No,Yes
+item_category4,Item,String,Short Sleeve,Fourth-level category,No,Yes
+item_category5,Item,String,Cotton,Fifth-level category,No,Yes
+item_list_id,Event,String,related_products,ID of the product list,No,Yes
+item_list_name,Event,String,Related Products,Name of the product list,No,Yes
+item_variant,Item,String,Blue / Large,Product variant (color/size/etc),No,Yes
+location_id,Item,String,L_12345,Physical location associated with item,No,Yes
+price,Item,Number,29.99,Unit price of item,No,Yes
+quantity,Item,Number,2,Quantity of item,No,Yes
+transaction_id,Event,String,T_12345,Unique transaction identifier,Yes (purchase),Yes
+value,Event,Number,149.99,Total monetary value of event,Yes (ecommerce),Yes
+tax,Event,Number,10.50,Tax amount,No,Yes
+shipping,Event,Number,5.99,Shipping cost,No,Yes
+shipping_tier,Event,String,Ground,Shipping method selected,No,Yes
+payment_type,Event,String,Credit Card,Payment method used,No,Yes
+page_title,Event,String,Home - Acme Store,Title of the page,Auto-collected,Yes
+page_location,Event,String,https://example.com/page,Full URL of the page,Auto-collected,Yes
+page_referrer,Event,String,https://google.com,Referring URL,Auto-collected,Yes
+search_term,Event,String,blue shirt,Search query entered by user,No,Yes
+method,Event,String,Google,Login/signup method,No,Yes
+form_id,Event,String,contact_form_1,HTML ID of the form,No,No
+form_name,Event,String,Contact Us,Friendly name of form,No,No
+form_destination,Event,String,/thank-you,URL form submits to,No,No
+error_message,Event,String,Invalid email format,Validation error message,No,No
+cta_text,Event,String,Get Started,Text of CTA button,No,No
+cta_location,Event,String,Hero Section,Location of CTA on page,No,No
+cta_destination,Event,String,/signup,URL CTA links to,No,No
+video_title,Event,String,Product Demo,Title of video,No,No
+video_url,Event,String,https://youtube.com/watch?v=xyz,URL of video,No,No
+video_provider,Event,String,YouTube,Video hosting platform,No,No
+video_percent,Event,Number,25,Percentage of video watched,No,No
+link_url,Event,String,https://external-site.com,URL of clicked link,No,Yes
+link_domain,Event,String,external-site.com,Domain of clicked link,No,Yes
+link_text,Event,String,Learn More,Anchor text of link,No,No
+file_name,Event,String,product-catalog.pdf,Name of downloaded file,No,Yes
+file_extension,Event,String,.pdf,File type extension,No,Yes
+social_network,Event,String,Facebook,Social platform used for sharing,No,No
+content_type,Event,String,product,Type of content shared,No,No
+content_id,Event,String,PROD_123,ID of shared content,No,No
+user_id,User,String,USER_abc123,Unique identifier for logged-in user,No,Yes
+user_type,User,String,subscriber,Type or tier of user,No,No
+signup_location,Event,String,Footer,Location of signup form,No,No
+list_name,Event,String,Monthly Newsletter,Name of email list,No,No

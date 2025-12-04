@@ -1,0 +1,25 @@
+Event Name,Fires on Correct Trigger,All Required Parameters Present,Parameter Values Correct Format,Shows in GA4 DebugView,Shows in GA4 Realtime,Tested By,Date Validated,Notes
+page_view,,,,,,,,[Auto-collected event]
+view_item_list,,,,,,,,[Check items array populated correctly]
+select_item,,,,,,,,[Verify item_list_name matches view_item_list]
+view_item,,,,,,,,[Verify value matches product price]
+add_to_cart,,,,,,,,[Critical event - thorough testing required]
+view_cart,,,,,,,,[Check all cart items included in array]
+begin_checkout,,,,,,,,[Critical event - mark as key event]
+purchase,,,,,,,,[Verify transaction_id is unique, revenue accurate]
+form_start,,,,,,,,
+form_submit,,,,,,,,
+login,,,,,,,,
+sign_up,,,,,,,,
+search,,,,,,,,
+cta_click,,,,,,,,
+
+INSTRUCTIONS FOR USE:
+1. Test each event in a development or staging environment first
+2. Use GA4 DebugView to verify events fire correctly (Admin > DebugView)
+3. Check parameter names and values match specifications exactly
+4. Verify events appear in GA4 Realtime reports within 60 seconds
+5. Mark checkboxes when validation criteria met
+6. Document any issues in Notes column
+7. Retest after making fixes
+8. Final validation in production environment before launch

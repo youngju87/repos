@@ -1,0 +1,29 @@
+Event Category,Event Name,Description,Trigger Type,Page/Screen,Parameters,Implementation Status,Priority,Notes
+Ecommerce,view_item_list,User views a product list or category page,Page Load,Category pages,items (array),Not Started,High,
+Ecommerce,select_item,User clicks a product from a list,Click,Category pages,"items (array), item_list_name, item_list_id",Not Started,Medium,
+Ecommerce,view_item,User views product detail page,Page Load,Product pages,"items (array), value, currency",Not Started,High,
+Ecommerce,add_to_wishlist,User adds item to wishlist,Click,Product/Wishlist pages,"items (array), value, currency",Not Started,Low,
+Ecommerce,add_to_cart,User adds product to shopping cart,Click,Product/Cart pages,"items (array), value, currency",Not Started,High,
+Ecommerce,remove_from_cart,User removes item from cart,Click,Cart page,"items (array), value, currency",Not Started,Medium,
+Ecommerce,view_cart,User views shopping cart,Page Load,Cart page,"items (array), value, currency",Not Started,Medium,
+Ecommerce,begin_checkout,User initiates checkout process,Click/Page Load,Checkout page,"items (array), value, currency, coupon",Not Started,High,
+Ecommerce,add_shipping_info,User adds shipping information,Click/Form Submit,Checkout page,"items (array), value, currency, coupon, shipping_tier",Not Started,Medium,
+Ecommerce,add_payment_info,User adds payment information,Click/Form Submit,Checkout page,"items (array), value, currency, coupon, payment_type",Not Started,Medium,
+Ecommerce,purchase,Transaction completed successfully,Page Load,Thank you page,"transaction_id, value, currency, tax, shipping, items (array), coupon",Not Started,High,
+Ecommerce,refund,Refund processed,Server-side,N/A,"transaction_id, value, currency, items (array)",Not Started,Medium,Backend event
+Engagement,page_view,User views a page,Page Load,All pages,"page_title, page_location, page_referrer",Not Started,High,Auto-collected by GA4
+Engagement,scroll,User scrolls 90% of page,Scroll Depth,All pages,percent_scrolled,Not Started,Low,Enhanced Measurement
+Engagement,click,User clicks outbound link,Click,All pages,"link_url, link_domain, link_text",Not Started,Medium,
+Engagement,file_download,User downloads a file,Click,Various,"file_name, file_extension, link_url",Not Started,Medium,Enhanced Measurement
+Engagement,video_start,Video playback begins,Video Interaction,Pages with video,"video_title, video_url, video_provider",Not Started,Medium,
+Engagement,video_progress,Video reaches 25/50/75% completion,Video Interaction,Pages with video,"video_title, video_url, video_percent",Not Started,Low,
+Engagement,video_complete,Video playback completes,Video Interaction,Pages with video,"video_title, video_url",Not Started,Medium,
+Form,form_start,User begins filling out form,Form Interaction,Forms,"form_id, form_name, form_destination",Not Started,High,
+Form,form_submit,User submits form,Form Submit,Forms,"form_id, form_name, form_destination",Not Started,High,
+Form,form_error,Form validation error occurs,Form Interaction,Forms,"form_id, form_name, error_message",Not Started,Medium,
+User,login,User logs into account,Click/Page Load,Login/Account,"method, user_id",Not Started,High,
+User,sign_up,User creates new account,Form Submit,Registration,"method, user_id",Not Started,High,
+User,search,User performs site search,Click/Enter,Search pages,"search_term, search_results",Not Started,High,
+Engagement,cta_click,User clicks call-to-action button,Click,Various,"cta_text, cta_location, cta_destination",Not Started,High,Custom event
+Engagement,social_share,User shares content on social media,Click,Various,"social_network, content_type, content_id",Not Started,Low,
+Newsletter,newsletter_signup,User subscribes to newsletter,Form Submit,Various,"signup_location, list_name",Not Started,Medium,

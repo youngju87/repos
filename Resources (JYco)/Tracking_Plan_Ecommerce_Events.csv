@@ -1,0 +1,13 @@
+Event Name,Description,Trigger,Required Parameters,Recommended Parameters,Optional Parameters,Notes
+view_item_list,User views a list of items/products,Page load on category/collection pages,"items (array: item_id, item_name)",item_list_id,item_list_name,Fire once per page load with all visible items
+select_item,User clicks/selects an item from a list,Click on product in list,"items (array: item_id, item_name), item_list_name",item_list_id,index,Helps measure product list performance
+view_item,User views item details,Page load on product detail page,"items (array: item_id, item_name), currency, value",,item_brand | item_category | item_variant | price | quantity,Value should be item price
+add_to_wishlist,User adds item to wishlist,Click add to wishlist button,"items (array: item_id, item_name), currency, value",,,Requires wishlist functionality
+add_to_cart,User adds item to cart,Click add to cart button,"items (array: item_id, item_name), currency, value",,,Critical conversion event - mark as key event
+remove_from_cart,User removes item from cart,Click remove from cart,items (array: item_id),"currency, value",,Helps identify cart abandonment patterns
+view_cart,User views shopping cart,Page load or cart drawer open,"items (array: item_id, item_name), currency, value",,,Can fire on modal/drawer or dedicated cart page
+begin_checkout,Checkout process initiated,Checkout button click or checkout page load,"items (array: item_id, item_name), currency, value",coupon,,Critical funnel step - mark as key event
+add_shipping_info,User provides shipping details,Shipping form submit or continue button,"items (array: item_id, item_name), currency, value, shipping_tier",coupon,,Multi-step checkout: fire when user completes shipping step
+add_payment_info,User provides payment details,Payment form submit or continue button,"items (array: item_id, item_name), currency, value, payment_type",coupon,,Multi-step checkout: fire when user completes payment step
+purchase,Transaction completed,Order confirmation page load,"transaction_id, currency, value, items (array: item_id, item_name)","tax, shipping",coupon | affiliation,Value = total revenue including tax/shipping. Mark as key event
+refund,Full or partial refund processed,Server-side event when refund occurs,"transaction_id, currency, value",items (array),,Typically implemented server-side or via Measurement Protocol
