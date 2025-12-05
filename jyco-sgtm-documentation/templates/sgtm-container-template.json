@@ -1,0 +1,1590 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2025-01-15 12:00:00",
+  "containerVersion": {
+    "path": "accounts/ACCOUNT_ID/containers/CONTAINER_ID/versions/0",
+    "accountId": "ACCOUNT_ID",
+    "containerId": "CONTAINER_ID",
+    "containerVersionId": "0",
+    "name": "JY/co sGTM Container Template v1.0",
+    "description": "Production-ready server-side GTM container with GA4, Meta CAPI, Google Ads, TikTok, and Pinterest integrations. Created by JY/co.",
+    "container": {
+      "path": "accounts/ACCOUNT_ID/containers/CONTAINER_ID",
+      "accountId": "ACCOUNT_ID",
+      "containerId": "CONTAINER_ID",
+      "name": "Server Container Template",
+      "publicId": "GTM-XXXXXX",
+      "usageContext": [
+        "SERVER"
+      ],
+      "fingerprint": "",
+      "tagManagerUrl": "https://tagmanager.google.com/"
+    },
+    "client": [
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "clientId": "1",
+        "name": "Client - GA4",
+        "type": "gaaw",
+        "parameter": [
+          {
+            "type": "BOOLEAN",
+            "key": "enableGa4EsGetRequests",
+            "value": "true"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enableGa4EsPostRequests",
+            "value": "true"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enableUaGetRequests",
+            "value": "false"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enableUaPostRequests",
+            "value": "false"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enablePreviewHeaders",
+            "value": "true"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "compressServerResponse",
+            "value": "true"
+          }
+        ]
+      }
+    ],
+    "tag": [
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "2",
+        "name": "GA4 - All Events",
+        "type": "gaawe",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "{{Event Name}}"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "inheritFromClient",
+            "value": "true"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "redactVisitorIp",
+            "value": "true"
+          },
+          {
+            "type": "LIST",
+            "key": "userProperties",
+            "list": [
+              {
+                "type": "MAP",
+                "map": [
+                  {
+                    "type": "TEMPLATE",
+                    "key": "name",
+                    "value": "user_id"
+                  },
+                  {
+                    "type": "TEMPLATE",
+                    "key": "value",
+                    "value": "{{User - user_id}}"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "3"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "4",
+        "name": "Meta CAPI - PageView",
+        "type": "cvt_temp",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "apiAccessToken",
+            "value": "{{Const - Meta Access Token}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "pixelId",
+            "value": "{{Const - Meta Pixel ID}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "PageView"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "actionSource",
+            "value": "website"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventId",
+            "value": "{{Event - event_id}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventTime",
+            "value": "{{Event - timestamp_unix}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventSourceUrl",
+            "value": "{{Page - URL}}"
+          },
+          {
+            "type": "MAP",
+            "key": "userData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "em",
+                "value": "{{User - email}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ph",
+                "value": "{{User - phone}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fn",
+                "value": "{{User - first_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ln",
+                "value": "{{User - last_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ct",
+                "value": "{{User - city}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "st",
+                "value": "{{User - state}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "zp",
+                "value": "{{User - zip}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "country",
+                "value": "{{User - country}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "external_id",
+                "value": "{{User - user_id}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_ip_address",
+                "value": "{{Client - IP Address}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_user_agent",
+                "value": "{{Client - User Agent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbc",
+                "value": "{{Cookie - _fbc}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbp",
+                "value": "{{Cookie - _fbp}}"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "5"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT",
+        "monitoringMetadata": {
+          "type": "MAP"
+        },
+        "consentSettings": {
+          "consentStatus": "NOT_SET"
+        }
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "6",
+        "name": "Meta CAPI - ViewContent",
+        "type": "cvt_temp",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "apiAccessToken",
+            "value": "{{Const - Meta Access Token}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "pixelId",
+            "value": "{{Const - Meta Pixel ID}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "ViewContent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "actionSource",
+            "value": "website"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventId",
+            "value": "{{Event - event_id}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventTime",
+            "value": "{{Event - timestamp_unix}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventSourceUrl",
+            "value": "{{Page - URL}}"
+          },
+          {
+            "type": "MAP",
+            "key": "userData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "em",
+                "value": "{{User - email}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ph",
+                "value": "{{User - phone}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "external_id",
+                "value": "{{User - user_id}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_ip_address",
+                "value": "{{Client - IP Address}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_user_agent",
+                "value": "{{Client - User Agent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbc",
+                "value": "{{Cookie - _fbc}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbp",
+                "value": "{{Cookie - _fbp}}"
+              }
+            ]
+          },
+          {
+            "type": "MAP",
+            "key": "customData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "currency",
+                "value": "{{Ecom - currency}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "value",
+                "value": "{{Ecom - value}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_ids",
+                "value": "{{Ecom - item_ids}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_type",
+                "value": "product"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "7"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "8",
+        "name": "Meta CAPI - AddToCart",
+        "type": "cvt_temp",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "apiAccessToken",
+            "value": "{{Const - Meta Access Token}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "pixelId",
+            "value": "{{Const - Meta Pixel ID}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "AddToCart"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "actionSource",
+            "value": "website"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventId",
+            "value": "{{Event - event_id}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventTime",
+            "value": "{{Event - timestamp_unix}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventSourceUrl",
+            "value": "{{Page - URL}}"
+          },
+          {
+            "type": "MAP",
+            "key": "userData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "em",
+                "value": "{{User - email}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ph",
+                "value": "{{User - phone}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "external_id",
+                "value": "{{User - user_id}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_ip_address",
+                "value": "{{Client - IP Address}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_user_agent",
+                "value": "{{Client - User Agent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbc",
+                "value": "{{Cookie - _fbc}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbp",
+                "value": "{{Cookie - _fbp}}"
+              }
+            ]
+          },
+          {
+            "type": "MAP",
+            "key": "customData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "currency",
+                "value": "{{Ecom - currency}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "value",
+                "value": "{{Ecom - value}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_ids",
+                "value": "{{Ecom - item_ids}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_type",
+                "value": "product"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "contents",
+                "value": "{{Ecom - items}}"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "9"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "10",
+        "name": "Meta CAPI - InitiateCheckout",
+        "type": "cvt_temp",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "apiAccessToken",
+            "value": "{{Const - Meta Access Token}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "pixelId",
+            "value": "{{Const - Meta Pixel ID}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "InitiateCheckout"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "actionSource",
+            "value": "website"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventId",
+            "value": "{{Event - event_id}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventTime",
+            "value": "{{Event - timestamp_unix}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventSourceUrl",
+            "value": "{{Page - URL}}"
+          },
+          {
+            "type": "MAP",
+            "key": "userData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "em",
+                "value": "{{User - email}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ph",
+                "value": "{{User - phone}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fn",
+                "value": "{{User - first_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ln",
+                "value": "{{User - last_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "external_id",
+                "value": "{{User - user_id}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_ip_address",
+                "value": "{{Client - IP Address}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_user_agent",
+                "value": "{{Client - User Agent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbc",
+                "value": "{{Cookie - _fbc}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbp",
+                "value": "{{Cookie - _fbp}}"
+              }
+            ]
+          },
+          {
+            "type": "MAP",
+            "key": "customData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "currency",
+                "value": "{{Ecom - currency}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "value",
+                "value": "{{Ecom - value}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_ids",
+                "value": "{{Ecom - item_ids}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_type",
+                "value": "product"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "contents",
+                "value": "{{Ecom - items}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "num_items",
+                "value": "{{Ecom - item_count}}"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "11"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "12",
+        "name": "Meta CAPI - Purchase",
+        "type": "cvt_temp",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "apiAccessToken",
+            "value": "{{Const - Meta Access Token}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "pixelId",
+            "value": "{{Const - Meta Pixel ID}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventName",
+            "value": "Purchase"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "actionSource",
+            "value": "website"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventId",
+            "value": "{{Event - event_id}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventTime",
+            "value": "{{Event - timestamp_unix}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "eventSourceUrl",
+            "value": "{{Page - URL}}"
+          },
+          {
+            "type": "MAP",
+            "key": "userData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "em",
+                "value": "{{User - email}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ph",
+                "value": "{{User - phone}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fn",
+                "value": "{{User - first_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ln",
+                "value": "{{User - last_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "ct",
+                "value": "{{User - city}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "st",
+                "value": "{{User - state}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "zp",
+                "value": "{{User - zip}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "country",
+                "value": "{{User - country}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "external_id",
+                "value": "{{User - user_id}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_ip_address",
+                "value": "{{Client - IP Address}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "client_user_agent",
+                "value": "{{Client - User Agent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbc",
+                "value": "{{Cookie - _fbc}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "fbp",
+                "value": "{{Cookie - _fbp}}"
+              }
+            ]
+          },
+          {
+            "type": "MAP",
+            "key": "customData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "currency",
+                "value": "{{Ecom - currency}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "value",
+                "value": "{{Ecom - value}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_ids",
+                "value": "{{Ecom - item_ids}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "content_type",
+                "value": "product"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "contents",
+                "value": "{{Ecom - items}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "num_items",
+                "value": "{{Ecom - item_count}}"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "13"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "tagId": "14",
+        "name": "Google Ads - Purchase Conversion",
+        "type": "awct",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "conversionId",
+            "value": "{{Const - Google Ads Conversion ID}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "conversionLabel",
+            "value": "{{Const - Google Ads Purchase Label}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "transactionId",
+            "value": "{{Ecom - transaction_id}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "conversionValue",
+            "value": "{{Ecom - value}}"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "currencyCode",
+            "value": "{{Ecom - currency}}"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "enableUserData",
+            "value": "true"
+          },
+          {
+            "type": "MAP",
+            "key": "userData",
+            "map": [
+              {
+                "type": "TEMPLATE",
+                "key": "email",
+                "value": "{{User - email}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "phone",
+                "value": "{{User - phone}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "firstName",
+                "value": "{{User - first_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "lastName",
+                "value": "{{User - last_name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "street",
+                "value": "{{User - address}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "city",
+                "value": "{{User - city}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "region",
+                "value": "{{User - state}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "postalCode",
+                "value": "{{User - zip}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "country",
+                "value": "{{User - country}}"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "",
+        "firingTriggerId": [
+          "13"
+        ],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      }
+    ],
+    "trigger": [
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "triggerId": "3",
+        "name": "Trigger - All GA4 Events",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "triggerId": "5",
+        "name": "Trigger - PageView",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Event Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "page_view"
+              }
+            ]
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "triggerId": "7",
+        "name": "Trigger - ViewItem",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Event Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "view_item"
+              }
+            ]
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "triggerId": "9",
+        "name": "Trigger - AddToCart",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Event Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "add_to_cart"
+              }
+            ]
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "triggerId": "11",
+        "name": "Trigger - BeginCheckout",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Event Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "begin_checkout"
+              }
+            ]
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "triggerId": "13",
+        "name": "Trigger - Purchase",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Client Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "GA4"
+              }
+            ]
+          },
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Event Name}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "purchase"
+              }
+            ]
+          }
+        ],
+        "fingerprint": ""
+      }
+    ],
+    "variable": [
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "1",
+        "name": "Event - event_id",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "x-ga-mp2-event_id"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "2",
+        "name": "Event - timestamp_unix",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "x-ga-mp2-timestamp_micros"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "3",
+        "name": "Page - URL",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "page_location"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "4",
+        "name": "Page - hostname",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "page_hostname"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "5",
+        "name": "User - user_id",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_id"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "6",
+        "name": "User - email",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.email_address"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "7",
+        "name": "User - phone",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.phone_number"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "8",
+        "name": "User - first_name",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.first_name"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "9",
+        "name": "User - last_name",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.last_name"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "10",
+        "name": "User - city",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.city"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "11",
+        "name": "User - state",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.region"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "12",
+        "name": "User - zip",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.postal_code"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "13",
+        "name": "User - country",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.country"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "14",
+        "name": "User - address",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "user_data.address.street"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "15",
+        "name": "Ecom - transaction_id",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "x-ga-mp2-transaction_id"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "16",
+        "name": "Ecom - value",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "value"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "17",
+        "name": "Ecom - currency",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "currency"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "18",
+        "name": "Ecom - items",
+        "type": "ed",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "keyPath",
+            "value": "items"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "19",
+        "name": "Ecom - item_ids",
+        "type": "cjs",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "javascript",
+            "value": "function() {\n  var items = data.items;\n  if (!items || !items.length) return undefined;\n  return items.map(function(item) {\n    return item.item_id;\n  });\n}"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "20",
+        "name": "Ecom - item_count",
+        "type": "cjs",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "javascript",
+            "value": "function() {\n  var items = data.items;\n  if (!items || !items.length) return 0;\n  return items.reduce(function(sum, item) {\n    return sum + (item.quantity || 1);\n  }, 0);\n}"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "21",
+        "name": "Client - IP Address",
+        "type": "r",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "component",
+            "value": "HEADERS"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "requestProperty",
+            "value": "X-Forwarded-For"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "22",
+        "name": "Client - User Agent",
+        "type": "r",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "component",
+            "value": "HEADERS"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "requestProperty",
+            "value": "User-Agent"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "23",
+        "name": "Cookie - _fbc",
+        "type": "r",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "component",
+            "value": "COOKIES"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "requestProperty",
+            "value": "_fbc"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "24",
+        "name": "Cookie - _fbp",
+        "type": "r",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "component",
+            "value": "COOKIES"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "requestProperty",
+            "value": "_fbp"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "25",
+        "name": "Cookie - _ga",
+        "type": "r",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "component",
+            "value": "COOKIES"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "requestProperty",
+            "value": "_ga"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "30",
+        "name": "Const - Meta Pixel ID",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "REPLACE_WITH_YOUR_PIXEL_ID"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "31",
+        "name": "Const - Meta Access Token",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "REPLACE_WITH_YOUR_ACCESS_TOKEN"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "32",
+        "name": "Const - Google Ads Conversion ID",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "AW-XXXXXXXXXX"
+          }
+        ],
+        "fingerprint": ""
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "variableId": "33",
+        "name": "Const - Google Ads Purchase Label",
+        "type": "c",
+        "parameter": [
+          {
+            "type": "TEMPLATE",
+            "key": "value",
+            "value": "REPLACE_WITH_CONVERSION_LABEL"
+          }
+        ],
+        "fingerprint": ""
+      }
+    ],
+    "builtInVariable": [
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "type": "CLIENT_NAME",
+        "name": "Client Name"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "type": "EVENT_NAME",
+        "name": "Event Name"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "type": "CONTAINER_ID",
+        "name": "Container ID"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "type": "CONTAINER_VERSION",
+        "name": "Container Version"
+      },
+      {
+        "accountId": "ACCOUNT_ID",
+        "containerId": "CONTAINER_ID",
+        "type": "REQUEST_PATH",
+        "name": "Request Path"
+      }
+    ],
+    "fingerprint": "",
+    "tagManagerUrl": "https://tagmanager.google.com/"
+  }
+}
