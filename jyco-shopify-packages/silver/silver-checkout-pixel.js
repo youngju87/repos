@@ -1,12 +1,20 @@
 /**
  * JY/co Silver Package - Checkout Custom Pixel (Complete)
  * GA4 ecommerce tracking via Shopify Web Pixel API only
- * Version: 1.0
- * Last Updated: 2024-12-04
+ * Version: 2.0
+ * Last Updated: 2025-12-09
  *
  * Installation: Add this as a Custom Pixel in Shopify Admin > Settings > Customer Events
  * Documentation: See silver-sdr-document.docx
  * Support: contact@jyco.com
+ *
+ * CHANGELOG v2.0:
+ * - Enhanced security: Configurable postMessage origin restriction
+ * - Improved error handling with granular try-catch blocks
+ * - Better input validation and null safety
+ * - Enhanced JSDoc documentation
+ * - Optimized data formatting functions
+ * - More defensive programming practices
  *
  * This pixel captures ALL events through Shopify's Web Pixel API.
  * No theme code required - Custom Pixel only implementation.
@@ -26,7 +34,7 @@
 
   const JYCO_CONFIG = {
     debug: false,                      // Set to true for console logging
-    version: '1.0',
+    version: '2.0',
 
     // Choose your tracking method:
     // 'gtm' = PostMessage to GTM (requires GTM container)
@@ -39,23 +47,37 @@
 
     // Client ID handling
     useGaCookie: true,                 // Try to read _ga cookie for client_id
-    fallbackClientId: null             // Will be generated if needed
+    fallbackClientId: null,            // Will be generated if needed
+
+    // Security: Set to your actual domain in production for postMessage
+    // Example: 'https://yourdomain.com' or ['https://yourdomain.com', 'https://www.yourdomain.com']
+    allowedOrigins: '*' // TODO: Change this in production for better security
   };
 
   // ============================================================================
   // UTILITY FUNCTIONS
   // ============================================================================
 
-  // Debug logger
+  /**
+   * Debug logger
+   * @param {string} message - Log message
+   * @param {*} [data] - Optional data to log
+   */
   function jycoLog(message, data) {
     if (JYCO_CONFIG.debug) {
       console.log('[JY/co Silver v' + JYCO_CONFIG.version + '] ' + message, data || '');
     }
   }
 
-  // SHA256 hash function for email
+  /**
+   * SHA256 hash function for email
+   * @param {string} message - String to hash
+   * @returns {Promise<string>} Hashed string
+   */
   async function sha256(message) {
-    if (!message) return '';
+    if (!message) {
+      return '';
+    }
 
     try {
       const msgBuffer = new TextEncoder().encode(message.toLowerCase().trim());
@@ -69,7 +91,10 @@
     }
   }
 
-  // Get or create client ID
+  /**
+   * Get or create client ID
+   * @returns {string} Client ID
+   */
   function getClientId() {
     if (JYCO_CONFIG.useGaCookie) {
       try {
@@ -96,93 +121,150 @@
     return JYCO_CONFIG.fallbackClientId;
   }
 
-  // Format line items to GA4 items array
+  /**
+   * Safely parse float value
+   * @param {*} value - Value to parse
+   * @returns {number} Parsed number or 0
+   */
+  function safeParseFloat(value) {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  // ============================================================================
+  // DATA FORMATTING FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Format line items to GA4 items array
+   * @param {Array} lineItems - Array of line items
+   * @param {string} currency - Currency code
+   * @returns {Array} Formatted items array
+   */
   function formatLineItems(lineItems, currency) {
     if (!lineItems || !Array.isArray(lineItems)) {
+      jycoLog('Warning: formatLineItems received invalid lineItems', lineItems);
       return [];
     }
 
     return lineItems.map((item, index) => {
-      const variant = item.variant || {};
-      const product = variant.product || {};
-      const price = parseFloat(item.finalLinePrice?.amount || 0) / (item.quantity || 1);
-      const compareAtPrice = parseFloat(variant.compareAtPrice?.amount || 0);
-      const discount = compareAtPrice > price ? (compareAtPrice - price) : 0;
+      try {
+        const variant = item.variant || {};
+        const product = variant.product || {};
+        const price = safeParseFloat(item.finalLinePrice?.amount || 0) / (item.quantity || 1);
+        const compareAtPrice = safeParseFloat(variant.compareAtPrice?.amount || 0);
+        const discount = compareAtPrice > price ? (compareAtPrice - price) : 0;
 
-      const formattedItem = {
-        item_id: String(variant.id || ''),
-        item_name: item.title || product.title || '',
-        item_brand: product.vendor || '',
-        item_category: product.type || '',
-        price: price,
-        quantity: item.quantity || 1,
-        currency: currency
-      };
+        const formattedItem = {
+          item_id: String(variant.id || ''),
+          item_name: item.title || product.title || '',
+          item_brand: product.vendor || '',
+          item_category: product.type || '',
+          price: price,
+          quantity: item.quantity || 1,
+          currency: currency || 'USD'
+        };
 
-      if (variant.title && variant.title !== 'Default Title') {
-        formattedItem.item_variant = variant.title;
+        if (variant.title && variant.title !== 'Default Title') {
+          formattedItem.item_variant = variant.title;
+        }
+
+        if (variant.sku) {
+          formattedItem.item_sku = variant.sku;
+        }
+
+        if (discount > 0) {
+          formattedItem.discount = discount;
+        }
+
+        formattedItem.index = index;
+
+        return formattedItem;
+      } catch (e) {
+        jycoLog('Error formatting line item:', e);
+        return {
+          item_id: '',
+          item_name: 'Error formatting item',
+          currency: currency || 'USD',
+          price: 0,
+          quantity: 1
+        };
       }
-
-      if (variant.sku) {
-        formattedItem.item_sku = variant.sku;
-      }
-
-      if (discount > 0) {
-        formattedItem.discount = discount;
-      }
-
-      formattedItem.index = index;
-
-      return formattedItem;
     });
   }
 
-  // Format cart line items (slightly different structure)
+  /**
+   * Format cart line items (slightly different structure)
+   * @param {Array} cartLines - Array of cart lines
+   * @param {string} currency - Currency code
+   * @returns {Array} Formatted items array
+   */
   function formatCartItems(cartLines, currency) {
     if (!cartLines || !Array.isArray(cartLines)) {
+      jycoLog('Warning: formatCartItems received invalid cartLines', cartLines);
       return [];
     }
 
     return cartLines.map((line, index) => {
-      const merchandise = line.merchandise || {};
-      const product = merchandise.product || {};
-      const price = parseFloat(line.cost?.totalAmount?.amount || 0) / (line.quantity || 1);
+      try {
+        const merchandise = line.merchandise || {};
+        const product = merchandise.product || {};
+        const price = safeParseFloat(line.cost?.totalAmount?.amount || 0) / (line.quantity || 1);
 
-      const formattedItem = {
-        item_id: String(merchandise.id || ''),
-        item_name: merchandise.title || product.title || '',
-        item_brand: product.vendor || '',
-        item_category: product.type || '',
-        price: price,
-        quantity: line.quantity || 1,
-        currency: currency,
-        index: index
-      };
+        const formattedItem = {
+          item_id: String(merchandise.id || ''),
+          item_name: merchandise.title || product.title || '',
+          item_brand: product.vendor || '',
+          item_category: product.type || '',
+          price: price,
+          quantity: line.quantity || 1,
+          currency: currency || 'USD',
+          index: index
+        };
 
-      if (merchandise.title && merchandise.title !== 'Default Title') {
-        formattedItem.item_variant = merchandise.title;
+        if (merchandise.title && merchandise.title !== 'Default Title') {
+          formattedItem.item_variant = merchandise.title;
+        }
+
+        if (merchandise.sku) {
+          formattedItem.item_sku = merchandise.sku;
+        }
+
+        return formattedItem;
+      } catch (e) {
+        jycoLog('Error formatting cart item:', e);
+        return {
+          item_id: '',
+          item_name: 'Error formatting item',
+          currency: currency || 'USD',
+          price: 0,
+          quantity: 1,
+          index: index
+        };
       }
-
-      if (merchandise.sku) {
-        formattedItem.item_sku = merchandise.sku;
-      }
-
-      return formattedItem;
     });
   }
 
-  // Extract discount information
+  /**
+   * Extract discount information
+   * @param {Array} discountApplications - Discount applications array
+   * @returns {Object} Discount information
+   */
   function getDiscountInfo(discountApplications) {
     const discounts = discountApplications || [];
     const discountCodes = [];
     let totalDiscountAmount = 0;
 
     discounts.forEach(discount => {
-      if (discount.title) {
-        discountCodes.push(discount.title);
-      }
-      if (discount.value && discount.value.amount) {
-        totalDiscountAmount += parseFloat(discount.value.amount);
+      try {
+        if (discount.title) {
+          discountCodes.push(discount.title);
+        }
+        if (discount.value && discount.value.amount) {
+          totalDiscountAmount += safeParseFloat(discount.value.amount);
+        }
+      } catch (e) {
+        jycoLog('Error processing discount:', e);
       }
     });
 
@@ -192,7 +274,11 @@
     };
   }
 
-  // Determine if customer is new
+  /**
+   * Determine if customer is new
+   * @param {Object} customer - Customer object
+   * @returns {boolean|null} True if new, false if returning, null if unknown
+   */
   function isNewCustomer(customer) {
     if (customer && typeof customer.ordersCount !== 'undefined') {
       return customer.ordersCount === 0 || customer.ordersCount === 1;
@@ -200,7 +286,11 @@
     return null;
   }
 
-  // Get customer data
+  /**
+   * Get customer data
+   * @param {Object} data - Event data object
+   * @returns {Promise<Object>} Customer data object
+   */
   async function getCustomerData(data) {
     const email = data.email || (data.customer && data.customer.email) || '';
     const customer = data.customer || {};
@@ -223,21 +313,42 @@
   // TRACKING METHODS
   // ============================================================================
 
-  // Method A: Send to GTM via postMessage
+  /**
+   * Method A: Send to GTM via postMessage
+   * @param {Object} payload - Data to send
+   */
   function sendToGTM(payload) {
+    if (!payload) {
+      jycoLog('Warning: Attempted to send null/undefined payload to GTM');
+      return;
+    }
+
     try {
+      const targetOrigin = JYCO_CONFIG.allowedOrigins === '*' ? '*' : JYCO_CONFIG.allowedOrigins;
+
       window.parent.postMessage({
         type: 'jyco_datalayer',
         payload: payload
-      }, '*');
+      }, targetOrigin);
+
       jycoLog('Event sent to GTM via postMessage', payload);
     } catch (e) {
       jycoLog('Error sending to GTM:', e);
     }
   }
 
-  // Method B: Send directly to GA4 via Measurement Protocol
+  /**
+   * Method B: Send directly to GA4 via Measurement Protocol
+   * @param {string} eventName - GA4 event name
+   * @param {Object} eventParams - Event parameters
+   * @returns {Promise<void>}
+   */
   async function sendToGA4Direct(eventName, eventParams) {
+    if (!eventName) {
+      jycoLog('Warning: Attempted to send event with no name');
+      return;
+    }
+
     try {
       const clientId = getClientId();
 
@@ -245,12 +356,12 @@
         client_id: clientId,
         events: [{
           name: eventName,
-          params: eventParams
+          params: eventParams || {}
         }]
       };
 
       // Add user_id if available
-      if (eventParams.user_id) {
+      if (eventParams && eventParams.user_id) {
         payload.user_id = eventParams.user_id;
       }
 
@@ -271,7 +382,13 @@
     }
   }
 
-  // Universal send function (chooses method based on config)
+  /**
+   * Universal send function (chooses method based on config)
+   * @param {string} eventName - Event name
+   * @param {Object} eventData - Ecommerce data
+   * @param {Object} [additionalData={}] - Additional event data
+   * @returns {Promise<void>}
+   */
   async function sendEvent(eventName, eventData, additionalData = {}) {
     const payload = {
       event: eventName,
@@ -307,12 +424,14 @@
   // EVENT HANDLERS
   // ============================================================================
 
-  // PAGE_VIEWED
+  /**
+   * Handle page_viewed event
+   */
   analytics.subscribe('page_viewed', async (event) => {
     try {
       jycoLog('page_viewed event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const customerData = await getCustomerData(data);
 
       // Determine page type from URL
@@ -344,18 +463,19 @@
         page_location: event.context?.document?.location?.href || '',
         ...customerData
       });
-
     } catch (e) {
       jycoLog('Error processing page_viewed:', e);
     }
   });
 
-  // PRODUCT_VIEWED
+  /**
+   * Handle product_viewed event
+   */
   analytics.subscribe('product_viewed', async (event) => {
     try {
       jycoLog('product_viewed event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const productVariant = data.productVariant || {};
       const product = productVariant.product || {};
       const currency = event.context?.currency || 'USD';
@@ -365,7 +485,7 @@
         item_name: product.title || '',
         item_brand: product.vendor || '',
         item_category: product.type || '',
-        price: parseFloat(productVariant.price?.amount || 0),
+        price: safeParseFloat(productVariant.price?.amount || 0),
         currency: currency
       };
 
@@ -382,20 +502,20 @@
         value: item.price,
         items: [item]
       });
-
     } catch (e) {
       jycoLog('Error processing product_viewed:', e);
     }
   });
 
-  // COLLECTION_VIEWED
+  /**
+   * Handle collection_viewed event
+   */
   analytics.subscribe('collection_viewed', async (event) => {
     try {
       jycoLog('collection_viewed event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const collection = data.collection || {};
-      const currency = event.context?.currency || 'USD';
 
       // Note: Shopify Web Pixel API doesn't provide products in collection
       // So we can't populate items array with products
@@ -406,35 +526,37 @@
         item_list_id: String(collection.id || ''),
         items: [] // Empty - limitation of Web Pixel API
       });
-
     } catch (e) {
       jycoLog('Error processing collection_viewed:', e);
     }
   });
 
-  // SEARCH_SUBMITTED
+  /**
+   * Handle search_submitted event
+   */
   analytics.subscribe('search_submitted', async (event) => {
     try {
       jycoLog('search_submitted event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const searchResult = data.searchResult || {};
 
       await sendEvent('search', null, {
         search_term: searchResult.query || ''
       });
-
     } catch (e) {
       jycoLog('Error processing search_submitted:', e);
     }
   });
 
-  // PRODUCT_ADDED_TO_CART
+  /**
+   * Handle product_added_to_cart event
+   */
   analytics.subscribe('product_added_to_cart', async (event) => {
     try {
       jycoLog('product_added_to_cart event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const cartLine = data.cartLine || {};
       const currency = event.context?.currency || 'USD';
 
@@ -446,18 +568,19 @@
         value: value,
         items: items
       });
-
     } catch (e) {
       jycoLog('Error processing product_added_to_cart:', e);
     }
   });
 
-  // PRODUCT_REMOVED_FROM_CART
+  /**
+   * Handle product_removed_from_cart event
+   */
   analytics.subscribe('product_removed_from_cart', async (event) => {
     try {
       jycoLog('product_removed_from_cart event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const cartLine = data.cartLine || {};
       const currency = event.context?.currency || 'USD';
 
@@ -467,22 +590,23 @@
         currency: currency,
         items: items
       });
-
     } catch (e) {
       jycoLog('Error processing product_removed_from_cart:', e);
     }
   });
 
-  // CART_VIEWED
+  /**
+   * Handle cart_viewed event
+   */
   analytics.subscribe('cart_viewed', async (event) => {
     try {
       jycoLog('cart_viewed event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const cart = data.cart || {};
       const currency = cart.cost?.totalAmount?.currencyCode || event.context?.currency || 'USD';
       const items = formatCartItems(cart.lines || [], currency);
-      const value = parseFloat(cart.cost?.totalAmount?.amount || 0);
+      const value = safeParseFloat(cart.cost?.totalAmount?.amount || 0);
 
       await sendEvent('view_cart', {
         currency: currency,
@@ -491,20 +615,21 @@
       }, {
         cart_id: cart.id || '',
         cart_total: value,
-        cart_item_count: cart.lines?.length || 0
+        cart_item_count: (cart.lines || []).length
       });
-
     } catch (e) {
       jycoLog('Error processing cart_viewed:', e);
     }
   });
 
-  // CHECKOUT_STARTED
+  /**
+   * Handle checkout_started event
+   */
   analytics.subscribe('checkout_started', async (event) => {
     try {
       jycoLog('checkout_started event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const checkout = data.checkout || {};
       const currency = checkout.currencyCode || 'USD';
       const items = formatLineItems(checkout.lineItems || [], currency);
@@ -512,21 +637,22 @@
 
       await sendEvent('begin_checkout', {
         currency: currency,
-        value: parseFloat(checkout.totalPrice?.amount || 0),
+        value: safeParseFloat(checkout.totalPrice?.amount || 0),
         items: items
       }, customerData);
-
     } catch (e) {
       jycoLog('Error processing checkout_started:', e);
     }
   });
 
-  // CHECKOUT_ADDRESS_INFO_SUBMITTED
+  /**
+   * Handle checkout_address_info_submitted event
+   */
   analytics.subscribe('checkout_address_info_submitted', async (event) => {
     try {
       jycoLog('checkout_address_info_submitted event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const checkout = data.checkout || {};
       const currency = checkout.currencyCode || 'USD';
       const items = formatLineItems(checkout.lineItems || [], currency);
@@ -539,21 +665,22 @@
 
       await sendEvent('add_shipping_info', {
         currency: currency,
-        value: parseFloat(checkout.totalPrice?.amount || 0),
+        value: safeParseFloat(checkout.totalPrice?.amount || 0),
         items: items
       }, additionalData);
-
     } catch (e) {
       jycoLog('Error processing checkout_address_info_submitted:', e);
     }
   });
 
-  // CHECKOUT_SHIPPING_INFO_SUBMITTED
+  /**
+   * Handle checkout_shipping_info_submitted event
+   */
   analytics.subscribe('checkout_shipping_info_submitted', async (event) => {
     try {
       jycoLog('checkout_shipping_info_submitted event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const checkout = data.checkout || {};
       const currency = checkout.currencyCode || 'USD';
       const items = formatLineItems(checkout.lineItems || [], currency);
@@ -561,44 +688,46 @@
 
       await sendEvent('add_shipping_info', {
         currency: currency,
-        value: parseFloat(checkout.totalPrice?.amount || 0),
+        value: safeParseFloat(checkout.totalPrice?.amount || 0),
         shipping_tier: shippingLine.title || '',
         items: items
       });
-
     } catch (e) {
       jycoLog('Error processing checkout_shipping_info_submitted:', e);
     }
   });
 
-  // PAYMENT_INFO_SUBMITTED
+  /**
+   * Handle payment_info_submitted event
+   */
   analytics.subscribe('payment_info_submitted', async (event) => {
     try {
       jycoLog('payment_info_submitted event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const checkout = data.checkout || {};
       const currency = checkout.currencyCode || 'USD';
       const items = formatLineItems(checkout.lineItems || [], currency);
 
       await sendEvent('add_payment_info', {
         currency: currency,
-        value: parseFloat(checkout.totalPrice?.amount || 0),
+        value: safeParseFloat(checkout.totalPrice?.amount || 0),
         payment_type: checkout.paymentMethod || '',
         items: items
       });
-
     } catch (e) {
       jycoLog('Error processing payment_info_submitted:', e);
     }
   });
 
-  // CHECKOUT_COMPLETED (PURCHASE)
+  /**
+   * Handle checkout_completed event (PURCHASE)
+   */
   analytics.subscribe('checkout_completed', async (event) => {
     try {
       jycoLog('checkout_completed event received', event);
 
-      const data = event.data;
+      const data = event.data || {};
       const checkout = data.checkout || {};
       const currency = checkout.currencyCode || 'USD';
       const items = formatLineItems(checkout.lineItems || [], currency);
@@ -606,9 +735,9 @@
       const customerData = await getCustomerData(checkout);
 
       const shippingLine = checkout.shippingLine || {};
-      const shippingCost = parseFloat(shippingLine.price?.amount || 0);
-      const tax = parseFloat(checkout.totalTax?.amount || 0);
-      const totalPrice = parseFloat(checkout.totalPrice?.amount || 0);
+      const shippingCost = safeParseFloat(shippingLine.price?.amount || 0);
+      const tax = safeParseFloat(checkout.totalTax?.amount || 0);
+      const totalPrice = safeParseFloat(checkout.totalPrice?.amount || 0);
 
       const ecommerceData = {
         transaction_id: String(checkout.order?.id || checkout.token || ''),
@@ -639,7 +768,6 @@
       }
 
       await sendEvent('purchase', ecommerceData, additionalData);
-
     } catch (e) {
       jycoLog('Error processing checkout_completed:', e);
     }
@@ -649,22 +777,29 @@
   // INITIALIZATION
   // ============================================================================
 
-  jycoLog('JY/co Silver Pixel initialized successfully', {
-    trackingMethod: JYCO_CONFIG.trackingMethod,
-    version: JYCO_CONFIG.version
-  });
+  /**
+   * Initialize pixel
+   */
+  (function init() {
+    jycoLog('JY/co Silver Pixel initialized successfully', {
+      trackingMethod: JYCO_CONFIG.trackingMethod,
+      version: JYCO_CONFIG.version
+    });
 
-  // Notify parent that pixel is ready (if using GTM method)
-  if (JYCO_CONFIG.trackingMethod === 'gtm') {
-    try {
-      window.parent.postMessage({
-        type: 'jyco_pixel_ready',
-        version: JYCO_CONFIG.version,
-        package: 'silver'
-      }, '*');
-    } catch (e) {
-      jycoLog('Error sending ready message:', e);
+    // Notify parent that pixel is ready (if using GTM method)
+    if (JYCO_CONFIG.trackingMethod === 'gtm') {
+      try {
+        const targetOrigin = JYCO_CONFIG.allowedOrigins === '*' ? '*' : JYCO_CONFIG.allowedOrigins;
+
+        window.parent.postMessage({
+          type: 'jyco_pixel_ready',
+          version: JYCO_CONFIG.version,
+          package: 'silver'
+        }, targetOrigin);
+      } catch (e) {
+        jycoLog('Error sending ready message:', e);
+      }
     }
-  }
+  })();
 
 })();
