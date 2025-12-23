@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: analytics-audit-db
+    environment:
+      POSTGRES_DB: analytics_audit
+      POSTGRES_USER: audituser
+      POSTGRES_PASSWORD: auditpass123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5433:5432"  # Using 5433 to avoid conflict with price-intel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audituser -d analytics_audit"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: analytics-audit-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@analyticsaudit.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5051:80"  # Using 5051 to avoid conflict
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    name: analytics-audit-network

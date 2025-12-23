@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: price-intel-db
+    environment:
+      POSTGRES_DB: price_intelligence
+      POSTGRES_USER: priceuser
+      POSTGRES_PASSWORD: pricepass123
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./warehouse/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U priceuser -d price_intelligence"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: price-intel-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Uncomment when ready to add Airflow
+  # airflow-webserver:
+  #   image: apache/airflow:2.7.3-python3.11
+  #   container_name: price-intel-airflow
+  #   environment:
+  #     AIRFLOW__CORE__EXECUTOR: LocalExecutor
+  #     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://priceuser:pricepass123@postgres/airflow
+  #     AIRFLOW__CORE__FERNET_KEY: ''
+  #     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+  #     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+  #   volumes:
+  #     - ./airflow/dags:/opt/airflow/dags
+  #     - ./airflow/logs:/opt/airflow/logs
+  #     - ./airflow/plugins:/opt/airflow/plugins
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+
+  # pgAdmin for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: price-intel-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@priceintel.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: price-intel-network
