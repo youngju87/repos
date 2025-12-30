@@ -56,12 +56,17 @@ def scan(url, max_pages, output, format, db_url):
 
     # Get database URL
     if db_url is None:
-        db_user = os.getenv('DB_USER', 'audituser')
-        db_pass = os.getenv('DB_PASSWORD', 'auditpass123')
-        db_host = os.getenv('DB_HOST', 'localhost')
-        db_port = os.getenv('DB_PORT', '5432')
-        db_name = os.getenv('DB_NAME', 'analytics_audit')
-        db_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+        # Check for DATABASE_URL first (SQLite or custom)
+        db_url = os.getenv('DATABASE_URL')
+
+        # Fall back to PostgreSQL config if DATABASE_URL not set
+        if db_url is None:
+            db_user = os.getenv('DB_USER', 'audituser')
+            db_pass = os.getenv('DB_PASSWORD', 'auditpass123')
+            db_host = os.getenv('DB_HOST', 'localhost')
+            db_port = os.getenv('DB_PORT', '5432')
+            db_name = os.getenv('DB_NAME', 'analytics_audit')
+            db_url = f"postgresql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 
     try:
         # Step 1: Crawl website

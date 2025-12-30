@@ -4,6 +4,7 @@ Calculates scores, identifies issues, and stores results in database
 """
 
 import logging
+import json
 from typing import List, Dict
 from datetime import datetime
 from urllib.parse import urlparse
@@ -13,7 +14,6 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import text
 
 from crawler.page_crawler import CrawledPage
-from database.models import Audit, Page, Issue, Tag, DataLayerEvent
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,20 @@ class AuditAnalyzer:
     def __init__(self, database_url: str):
         self.engine = create_engine(database_url)
         self.Session = sessionmaker(bind=self.engine)
+        self.database_url = database_url
+
+        # Import appropriate models based on database type
+        if database_url.startswith('sqlite'):
+            from database.models_sqlite import Audit, Page, Issue, Tag, DataLayerEvent
+        else:
+            from database.models import Audit, Page, Issue, Tag, DataLayerEvent
+
+        # Store model classes
+        self.Audit = Audit
+        self.Page = Page
+        self.Issue = Issue
+        self.Tag = Tag
+        self.DataLayerEvent = DataLayerEvent
 
     def create_audit(
         self,
@@ -33,7 +47,7 @@ class AuditAnalyzer:
         crawled_pages: List[CrawledPage],
         max_pages_config: int = 50,
         created_by: str = None
-    ) -> Audit:
+    ):
         """
         Create audit from crawled pages and analyze results
         """
@@ -42,7 +56,7 @@ class AuditAnalyzer:
         try:
             # Create audit record
             parsed_url = urlparse(site_url)
-            audit = Audit(
+            audit = self.Audit(
                 site_url=site_url,
                 site_domain=parsed_url.netloc,
                 started_at=datetime.utcnow(),
@@ -89,12 +103,19 @@ class AuditAnalyzer:
         finally:
             session.close()
 
-    def _process_page(self, session, audit: Audit, crawled_page: CrawledPage):
+    def _process_page(self, session, audit, crawled_page: CrawledPage):
         """Convert CrawledPage to database Page record"""
 
         parsed_url = urlparse(crawled_page.url)
 
-        page = Page(
+        # For SQLite, convert lists/dicts to JSON strings
+        def to_json_if_needed(value):
+            if self.database_url.startswith('sqlite'):
+                if isinstance(value, (list, dict)):
+                    return json.dumps(value)
+            return value
+
+        page = self.Page(
             audit_id=audit.audit_id,
             url=crawled_page.url,
             page_path=parsed_url.path,
@@ -105,15 +126,15 @@ class AuditAnalyzer:
 
             # Analytics tags
             has_ga4=crawled_page.has_ga4,
-            ga4_measurement_ids=crawled_page.ga4_measurement_ids,
+            ga4_measurement_ids=to_json_if_needed(crawled_page.ga4_measurement_ids),
             has_gtm=crawled_page.has_gtm,
-            gtm_container_ids=crawled_page.gtm_container_ids,
+            gtm_container_ids=to_json_if_needed(crawled_page.gtm_container_ids),
             has_universal_analytics=crawled_page.has_universal_analytics,
-            ua_tracking_ids=crawled_page.ua_tracking_ids,
+            ua_tracking_ids=to_json_if_needed(crawled_page.ua_tracking_ids),
 
             # Other tracking
             has_facebook_pixel=crawled_page.has_facebook_pixel,
-            facebook_pixel_ids=crawled_page.facebook_pixel_ids,
+            facebook_pixel_ids=to_json_if_needed(crawled_page.facebook_pixel_ids),
             has_linkedin_insight=crawled_page.has_linkedin_insight,
             has_hotjar=crawled_page.has_hotjar,
             has_google_ads=crawled_page.has_google_ads,
@@ -126,7 +147,7 @@ class AuditAnalyzer:
             # dataLayer
             has_datalayer=crawled_page.has_datalayer,
             datalayer_defined_before_gtm=crawled_page.datalayer_defined_before_gtm,
-            datalayer_events=crawled_page.datalayer_events,
+            datalayer_events=to_json_if_needed(crawled_page.datalayer_events),
 
             # Performance
             total_scripts=crawled_page.total_scripts,
@@ -142,7 +163,7 @@ class AuditAnalyzer:
 
         # Add issues from crawler
         for issue_data in crawled_page.issues:
-            issue = Issue(
+            issue = self.Issue(
                 audit_id=audit.audit_id,
                 page_id=page.page_id,
                 severity=issue_data['severity'],
@@ -150,17 +171,17 @@ class AuditAnalyzer:
                 title=issue_data['message'],
                 description=issue_data['message'],
                 recommendation=issue_data.get('recommendation'),
-                affected_urls=[crawled_page.url]
+                affected_urls=to_json_if_needed([crawled_page.url])
             )
             session.add(issue)
 
         # Add dataLayer events
         for idx, event in enumerate(crawled_page.datalayer_events):
             if isinstance(event, dict) and 'event' in event:
-                dl_event = DataLayerEvent(
+                dl_event = self.DataLayerEvent(
                     page_id=page.page_id,
                     event_name=event.get('event'),
-                    event_parameters=event,
+                    event_parameters=to_json_if_needed(event),
                     event_index=idx
                 )
                 session.add(dl_event)
@@ -184,13 +205,20 @@ class AuditAnalyzer:
         else:
             return 'other'
 
-    def _analyze_audit(self, session, audit: Audit):
+    def _analyze_audit(self, session, audit):
         """Analyze overall audit and generate cross-page issues"""
 
-        pages = session.query(Page).filter(Page.audit_id == audit.audit_id).all()
+        pages = session.query(self.Page).filter(self.Page.audit_id == audit.audit_id).all()
 
         if not pages:
             return
+
+        # Helper to serialize lists to JSON for SQLite
+        def to_json_if_needed(value):
+            if self.database_url.startswith('sqlite'):
+                if isinstance(value, (list, dict)):
+                    return json.dumps(value)
+            return value
 
         # Check 1: Inconsistent tag coverage
         ga4_pages = [p for p in pages if p.has_ga4]
@@ -201,14 +229,14 @@ class AuditAnalyzer:
 
         if ga4_coverage < 90:
             missing_pages = [p.url for p in pages if not p.has_ga4]
-            issue = Issue(
+            issue = self.Issue(
                 audit_id=audit.audit_id,
                 severity='warning' if ga4_coverage > 70 else 'critical',
                 category='implementation',
                 title=f'GA4 only on {ga4_coverage:.0f}% of pages',
                 description=f'GA4 tracking is missing on {len(missing_pages)} pages',
                 recommendation='Ensure GA4 tag is present on all pages via GTM or global template',
-                affected_urls=missing_pages[:10]  # Limit to first 10
+                affected_urls=to_json_if_needed(missing_pages[:10])  # Limit to first 10
             )
             session.add(issue)
 
@@ -216,10 +244,18 @@ class AuditAnalyzer:
         all_gtm_ids = set()
         for page in gtm_pages:
             if page.gtm_container_ids:
-                all_gtm_ids.update(page.gtm_container_ids)
+                # For SQLite, parse JSON string back to list
+                container_ids = page.gtm_container_ids
+                if isinstance(container_ids, str):
+                    try:
+                        container_ids = json.loads(container_ids)
+                    except:
+                        container_ids = []
+                if container_ids:
+                    all_gtm_ids.update(container_ids)
 
         if len(all_gtm_ids) > 1:
-            issue = Issue(
+            issue = self.Issue(
                 audit_id=audit.audit_id,
                 severity='warning',
                 category='implementation',
@@ -236,14 +272,14 @@ class AuditAnalyzer:
             if important_pages:
                 missing_ga4 = [p for p in important_pages if not p.has_ga4]
                 if missing_ga4:
-                    issue = Issue(
+                    issue = self.Issue(
                         audit_id=audit.audit_id,
                         severity='critical',
                         category='implementation',
                         title=f'GA4 missing on {page_type} page(s)',
                         description=f'Critical {page_type} pages do not have GA4 tracking',
                         recommendation='Add GA4 to these high-value pages immediately',
-                        affected_urls=[p.url for p in missing_ga4]
+                        affected_urls=to_json_if_needed([p.url for p in missing_ga4])
                     )
                     session.add(issue)
 
@@ -252,7 +288,7 @@ class AuditAnalyzer:
         consent_coverage = len(consent_pages) / len(pages) * 100
 
         if consent_coverage < 50:
-            issue = Issue(
+            issue = self.Issue(
                 audit_id=audit.audit_id,
                 severity='critical',
                 category='privacy',
@@ -266,7 +302,7 @@ class AuditAnalyzer:
         avg_tracking_scripts = sum(p.tracking_scripts or 0 for p in pages) / len(pages)
 
         if avg_tracking_scripts > 10:
-            issue = Issue(
+            issue = self.Issue(
                 audit_id=audit.audit_id,
                 severity='warning',
                 category='performance',
@@ -278,7 +314,7 @@ class AuditAnalyzer:
 
         # Check 6: Mixed GA4 and Universal Analytics (migration issue)
         if any(p.has_universal_analytics for p in pages) and any(p.has_ga4 for p in pages):
-            issue = Issue(
+            issue = self.Issue(
                 audit_id=audit.audit_id,
                 severity='info',
                 category='implementation',
@@ -290,59 +326,143 @@ class AuditAnalyzer:
 
         session.flush()
 
-    def _calculate_scores(self, session, audit: Audit):
-        """Calculate audit scores using database function"""
+    def _calculate_scores(self, session, audit):
+        """Calculate audit scores based on tag coverage, compliance, and performance"""
 
         try:
-            # Call PostgreSQL function to calculate scores
-            result = session.execute(
-                text("SELECT calculate_audit_score(:audit_id)"),
-                {"audit_id": audit.audit_id}
-            )
-            overall_score = result.scalar()
+            # Get all pages for this audit
+            pages = session.query(self.Page).filter(
+                self.Page.audit_id == audit.audit_id
+            ).all()
 
             # Count issues by severity
-            critical_count = session.query(Issue).filter(
-                Issue.audit_id == audit.audit_id,
-                Issue.severity == 'critical'
+            critical_count = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.severity == 'critical'
             ).count()
 
-            warning_count = session.query(Issue).filter(
-                Issue.audit_id == audit.audit_id,
-                Issue.severity == 'warning'
+            warning_count = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.severity == 'warning'
             ).count()
 
-            info_count = session.query(Issue).filter(
-                Issue.audit_id == audit.audit_id,
-                Issue.severity == 'info'
+            info_count = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.severity == 'info'
             ).count()
 
             audit.critical_issues = critical_count
             audit.warning_issues = warning_count
             audit.info_issues = info_count
 
+            if not pages:
+                audit.overall_score = 0.0
+                audit.implementation_score = 0.0
+                audit.compliance_score = 0.0
+                audit.performance_score = 0.0
+                return
+
+            # Calculate Implementation Score (0-100)
+            implementation_score = 100.0
+
+            # GA4 coverage (40 points)
+            ga4_pages = sum(1 for p in pages if p.has_ga4)
+            ga4_coverage = (ga4_pages / len(pages)) * 100
+            implementation_score -= max(0, (100 - ga4_coverage) * 0.4)
+
+            # GTM coverage (30 points)
+            gtm_pages = sum(1 for p in pages if p.has_gtm)
+            gtm_coverage = (gtm_pages / len(pages)) * 100
+            implementation_score -= max(0, (100 - gtm_coverage) * 0.3)
+
+            # DataLayer implementation (30 points)
+            datalayer_pages = sum(1 for p in pages if p.has_datalayer)
+            if gtm_pages > 0:
+                datalayer_coverage = (datalayer_pages / gtm_pages) * 100
+                implementation_score -= max(0, (100 - datalayer_coverage) * 0.3)
+
+            audit.implementation_score = max(0, implementation_score)
+
+            # Calculate Compliance Score (0-100)
+            compliance_score = 100.0
+
+            # Consent banner coverage (60 points)
+            consent_pages = sum(1 for p in pages if p.has_consent_banner)
+            consent_coverage = (consent_pages / len(pages)) * 100
+            compliance_score -= max(0, (100 - consent_coverage) * 0.6)
+
+            # Privacy policy link (20 points)
+            privacy_pages = sum(1 for p in pages if p.has_privacy_policy_link)
+            privacy_coverage = (privacy_pages / len(pages)) * 100
+            compliance_score -= max(0, (100 - privacy_coverage) * 0.2)
+
+            # Deduct for critical compliance issues (20 points)
+            compliance_issues = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.category == 'privacy',
+                self.Issue.severity == 'critical'
+            ).count()
+            compliance_score -= min(20, compliance_issues * 10)
+
+            audit.compliance_score = max(0, compliance_score)
+
+            # Calculate Performance Score (0-100)
+            performance_score = 100.0
+
+            # Average tracking scripts (lower is better)
+            avg_scripts = sum(p.tracking_scripts or 0 for p in pages) / len(pages)
+            if avg_scripts > 15:
+                performance_score -= 30
+            elif avg_scripts > 10:
+                performance_score -= 20
+            elif avg_scripts > 5:
+                performance_score -= 10
+
+            # Deduct for performance issues
+            perf_issues = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.category == 'performance'
+            ).count()
+            performance_score -= min(30, perf_issues * 10)
+
+            audit.performance_score = max(0, performance_score)
+
+            # Calculate Overall Score (weighted average)
+            audit.overall_score = (
+                audit.implementation_score * 0.40 +
+                audit.compliance_score * 0.40 +
+                audit.performance_score * 0.20
+            )
+
             logger.info(
                 f"Calculated scores for audit {audit.audit_id}: "
-                f"Overall={overall_score}, Critical={critical_count}, Warnings={warning_count}"
+                f"Overall={audit.overall_score:.1f}, "
+                f"Implementation={audit.implementation_score:.1f}, "
+                f"Compliance={audit.compliance_score:.1f}, "
+                f"Performance={audit.performance_score:.1f}, "
+                f"Critical={critical_count}, Warnings={warning_count}"
             )
 
         except Exception as e:
             logger.error(f"Error calculating scores: {e}")
-            # Fallback to basic scoring if function fails
+            # Fallback to basic scoring if calculation fails
             audit.overall_score = 50.0
+            audit.implementation_score = 50.0
+            audit.compliance_score = 50.0
+            audit.performance_score = 50.0
 
     def get_audit_summary(self, audit_id: str) -> Dict:
         """Get summary of audit results"""
         session = self.Session()
 
         try:
-            audit = session.query(Audit).filter(Audit.audit_id == audit_id).first()
+            audit = session.query(self.Audit).filter(self.Audit.audit_id == audit_id).first()
 
             if not audit:
                 raise ValueError(f"Audit {audit_id} not found")
 
-            pages = session.query(Page).filter(Page.audit_id == audit_id).all()
-            issues = session.query(Issue).filter(Issue.audit_id == audit_id).all()
+            pages = session.query(self.Page).filter(self.Page.audit_id == audit_id).all()
+            issues = session.query(self.Issue).filter(self.Issue.audit_id == audit_id).all()
 
             return {
                 'audit_id': str(audit.audit_id),

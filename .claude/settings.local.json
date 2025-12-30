@@ -1,7 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(venvScriptspython.exe init_db.py)",
+      "Bash(venvScriptspython.exe audit_cli.py scan --url https://www.cambriausa.com --max-pages 5 --format html)",
+      "Bash(venvScriptspython.exe:*)",
+      "Bash(venv/Scripts/python.exe audit_cli.py scan:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(dir:*)",
+      "Bash(del analytics_audit.db)",
+      "Bash(timeout 120 venv/Scripts/python.exe:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

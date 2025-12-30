@@ -13,6 +13,11 @@ from datetime import datetime
 from playwright.async_api import async_playwright, Page, Browser
 from bs4 import BeautifulSoup
 
+# Import helper classes
+from .network_monitor import NetworkMonitor
+from .ga4_detector import GA4Detector, EventValidator
+from .ecommerce_validator import EcommerceValidator, PageType
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +54,18 @@ class CrawledPage:
     has_datalayer: bool = False
     datalayer_events: List[Dict] = field(default_factory=list)
     datalayer_defined_before_gtm: bool = True
+
+    # GA4 Events (NEW)
+    ga4_events_detected: List[str] = field(default_factory=list)
+    has_page_view_event: bool = False
+    has_ecommerce_events: bool = False
+    ecommerce_events: List[str] = field(default_factory=list)
+    page_type: Optional[str] = None  # homepage, product, cart, checkout, etc.
+
+    # Tag Firing (NEW)
+    tags_fired: Dict[str, List[Dict]] = field(default_factory=dict)
+    ga4_requests: List[Dict] = field(default_factory=list)
+    facebook_requests: List[Dict] = field(default_factory=list)
 
     # Performance
     total_scripts: int = 0
@@ -130,6 +147,21 @@ class AnalyticsCrawler:
         page = await browser.new_page(user_agent=self.user_agent)
 
         try:
+            # Create page data object (we'll populate it)
+            page_data = CrawledPage(
+                url=url,
+                title="",
+                status_code=200,
+                load_time=0.0,
+                html_content=""
+            )
+
+            # Set up network request monitoring BEFORE navigation
+            network_monitor = NetworkMonitor()
+
+            # Attach request listener
+            page.on('request', network_monitor.handle_request)
+
             # Navigate and wait for network idle
             start_time = datetime.utcnow()
 
@@ -138,26 +170,38 @@ class AnalyticsCrawler:
             else:
                 await page.goto(url, timeout=self.timeout, wait_until="domcontentloaded")
 
+            # Wait a bit more for async tags to fire
+            await page.wait_for_timeout(2000)  # 2 seconds
+
             load_time = (datetime.utcnow() - start_time).total_seconds()
 
             # Get page content and title
             html_content = await page.content()
             title = await page.title()
 
-            # Create page data object
-            page_data = CrawledPage(
-                url=url,
-                title=title,
-                status_code=200,  # Playwright doesn't easily expose this
-                load_time=load_time,
-                html_content=html_content
-            )
+            # Update page data
+            page_data.title = title
+            page_data.load_time = load_time
+            page_data.html_content = html_content
 
-            # Detect analytics tags
-            await self._detect_analytics_tags(page, page_data)
+            # Get network monitoring summaries
+            ga4_summary = network_monitor.get_ga4_summary()
+            facebook_summary = network_monitor.get_facebook_summary()
 
-            # Check dataLayer
+            page_data.ga4_requests = ga4_summary['requests']
+            page_data.facebook_requests = facebook_summary['requests']
+
+            # Detect analytics tags (enhanced with network data)
+            await self._detect_analytics_tags(page, page_data, ga4_summary['measurement_ids'])
+
+            # Check dataLayer and validate events
             await self._check_datalayer(page, page_data)
+
+            # Validate GA4 events
+            await self._validate_ga4_events(page, page_data)
+
+            # Validate ecommerce tracking
+            await self._validate_ecommerce(page, page_data)
 
             # Detect consent banner
             await self._detect_consent_banner(page, page_data)
@@ -177,28 +221,82 @@ class AnalyticsCrawler:
         finally:
             await page.close()
 
-    async def _detect_analytics_tags(self, page: Page, page_data: CrawledPage):
-        """Detect various analytics tags via JavaScript evaluation"""
+    async def _detect_analytics_tags(self, page: Page, page_data: CrawledPage, ga4_ids_from_network: set = None):
+        """Detect various analytics tags using GA4Detector helper class"""
+        try:
+            if ga4_ids_from_network is None:
+                ga4_ids_from_network = set()
 
-        # Check for GA4 (gtag.js)
-        ga4_check = await page.evaluate("""
-            () => {
-                if (window.gtag) {
-                    // Try to find measurement IDs in gtag calls
-                    const scripts = Array.from(document.scripts);
-                    const gtagScripts = scripts.filter(s => s.src.includes('googletagmanager.com/gtag'));
-                    const ids = gtagScripts.map(s => {
-                        const match = s.src.match(/id=([A-Z0-9-]+)/);
-                        return match ? match[1] : null;
-                    }).filter(Boolean);
-                    return {has_ga4: true, ids: ids};
-                }
-                return {has_ga4: false, ids: []};
-            }
-        """)
+            # Use GA4Detector helper class for three-method detection
+            gtag_result = await GA4Detector.detect_direct_gtag(page)
+            datalayer_ids = await GA4Detector.detect_datalayer_config(page)
 
-        page_data.has_ga4 = ga4_check['has_ga4']
-        page_data.ga4_measurement_ids = ga4_check['ids']
+            # Combine results from all detection methods
+            detection_result = GA4Detector.combine_results(
+                gtag_result=gtag_result,
+                datalayer_ids=datalayer_ids,
+                network_ids=ga4_ids_from_network
+            )
+
+            # Update page data with detection results
+            page_data.has_ga4 = detection_result['has_ga4'] or len(page_data.ga4_requests) > 0
+            page_data.ga4_measurement_ids = detection_result['measurement_ids']
+
+        except Exception as e:
+            logger.error(f"Error detecting analytics tags: {e}")
+            # Set defaults on error
+            page_data.has_ga4 = False
+            page_data.ga4_measurement_ids = []
+
+    async def _validate_ga4_events(self, page: Page, page_data: CrawledPage):
+        """Validate GA4 event tracking using EventValidator helper class"""
+        try:
+            # Use EventValidator helper class
+            validation_result = await EventValidator.validate_events(page)
+
+            # Store GA4 events from validation
+            page_data.ga4_events_detected = validation_result['all_events']
+            page_data.has_page_view_event = validation_result['has_page_view']
+            page_data.has_ecommerce_events = len(validation_result['ecommerce_events']) > 0
+            page_data.ecommerce_events = [evt['event'] for evt in validation_result['ecommerce_events']]
+
+            # Add issues for missing critical events
+            if page_data.has_ga4 and not page_data.has_page_view_event:
+                page_data.issues.append({
+                    'severity': 'warning',
+                    'category': 'implementation',
+                    'message': 'GA4 detected but no page_view event found',
+                    'recommendation': 'Verify GA4 configuration is firing page_view events'
+                })
+
+        except Exception as e:
+            logger.error(f"Error validating GA4 events: {e}")
+            # Set defaults on error
+            page_data.ga4_events_detected = []
+            page_data.has_page_view_event = False
+            page_data.has_ecommerce_events = False
+            page_data.ecommerce_events = []
+
+    async def _validate_ecommerce(self, page: Page, page_data: CrawledPage):
+        """Validate ecommerce tracking using EcommerceValidator helper class"""
+        try:
+            # Use EcommerceValidator to detect page type and validate tracking
+            page_type = await EcommerceValidator.detect_page_type_with_content(page, page_data.url)
+            page_data.page_type = page_type.value
+
+            # Validate tracking for the detected page type
+            validation_issues = EcommerceValidator.validate_tracking(
+                page_type=page_type,
+                ecommerce_events=page_data.ecommerce_events
+            )
+
+            # Add validation issues to page data
+            page_data.issues.extend(validation_issues)
+
+        except Exception as e:
+            logger.error(f"Error validating ecommerce tracking: {e}")
+            # Set default page type on error
+            page_data.page_type = PageType.STANDARD.value
 
         # Check for GTM
         gtm_check = await page.evaluate("""

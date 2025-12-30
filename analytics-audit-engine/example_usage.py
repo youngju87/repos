@@ -22,8 +22,10 @@ def example_basic_audit():
     site_url = "https://demo.google.com/analytics"
     max_pages = 5
 
-    # Database connection
-    db_url = "postgresql://audituser:auditpass123@localhost:5433/analytics_audit"
+    # Database connection (SQLite by default)
+    db_url = "sqlite:///./analytics_audit.db"
+    # Or use PostgreSQL:
+    # db_url = "postgresql://audituser:auditpass123@localhost:5433/analytics_audit"
 
     # Step 1: Crawl website
     print(f"Crawling {site_url}...")
@@ -123,7 +125,7 @@ def example_batch_auditing():
         "https://site3.com"
     ]
 
-    db_url = "postgresql://audituser:auditpass123@localhost:5433/analytics_audit"
+    db_url = "sqlite:///./analytics_audit.db"
     analyzer = AuditAnalyzer(db_url)
 
     results = []
@@ -170,7 +172,7 @@ def example_report_customization():
     """
     print("=== Example 4: Custom Reports ===\n")
 
-    db_url = "postgresql://audituser:auditpass123@localhost:5433/analytics_audit"
+    db_url = "sqlite:///./analytics_audit.db"
     analyzer = AuditAnalyzer(db_url)
 
     # Assuming we have a previous audit
@@ -231,9 +233,9 @@ def example_filtering_and_queries():
 
     from sqlalchemy import create_engine, func
     from sqlalchemy.orm import sessionmaker
-    from database.models import Audit, Page, Issue
+    from database.models_sqlite import Audit, Page, Issue
 
-    db_url = "postgresql://audituser:auditpass123@localhost:5433/analytics_audit"
+    db_url = "sqlite:///./analytics_audit.db"
     engine = create_engine(db_url)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -283,9 +285,13 @@ def example_filtering_and_queries():
 if __name__ == "__main__":
     """
     Run examples
+
+    These examples demonstrate how to use the Analytics Audit Engine
+    as a Python library for programmatic auditing.
     """
     print("Analytics Audit Engine - Example Usage\n")
-    print("Make sure Docker is running: docker-compose up -d\n")
+    print("Using SQLite database (no setup required)\n")
+    print("=" * 60)
 
     # Uncomment the examples you want to run:
 
@@ -295,6 +301,9 @@ if __name__ == "__main__":
     # example_report_customization()
     # example_filtering_and_queries()
 
-    print("Examples complete!")
-    print("\nTo run actual audits:")
+    print("\nExamples complete!")
+    print("\nTo run actual audits via CLI:")
     print("  python audit_cli.py scan --url https://yoursite.com --max-pages 10")
+    print("\nFor PostgreSQL instead of SQLite:")
+    print("  1. Start PostgreSQL: docker-compose up -d")
+    print("  2. Update .env: DATABASE_URL=postgresql://...")

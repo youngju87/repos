@@ -4,13 +4,21 @@ Get up and running in 10 minutes.
 
 ## Prerequisites
 
-- Docker Desktop
-- Python 3.11+
+- Python 3.11+ (3.12 recommended)
 - Internet connection (for crawling websites)
+- Docker Desktop (optional - only needed for PostgreSQL)
 
 ## Setup
 
-### 1. Start Database (2 minutes)
+### 1. Database Setup (Optional)
+
+**Option A: SQLite (Default - No Setup Required)**
+
+SQLite is already configured in `.env`. The database file will be created automatically when you run your first audit.
+
+**Option B: PostgreSQL (For Production)**
+
+If you prefer PostgreSQL:
 
 ```bash
 cd analytics-audit-engine
@@ -21,6 +29,8 @@ docker-compose up -d
 # Verify it's running
 docker-compose ps
 ```
+
+Then update `.env` to use PostgreSQL instead of SQLite.
 
 ### 2. Install Python Dependencies (3 minutes)
 
@@ -144,7 +154,7 @@ The HTML report includes:
 
 ## Troubleshooting
 
-### "Connection refused" error
+### "Connection refused" error (PostgreSQL only)
 ```bash
 # Check if database is running
 docker-compose ps
@@ -152,6 +162,8 @@ docker-compose ps
 # If not, start it
 docker-compose up -d
 ```
+
+**Note:** If using SQLite (default), you won't see this error.
 
 ### "Playwright not found"
 ```bash
@@ -172,6 +184,13 @@ source venv/bin/activate  # or venv\Scripts\activate on Windows
 - This is normal - respectful crawling takes time
 - Reduce `--max-pages` for faster audits
 - First few pages include initial browser launch overhead
+
+### UnicodeEncodeError on Windows
+If you see `UnicodeEncodeError` when running scans:
+- The tool still works! Pages are being crawled successfully
+- Error is cosmetic (fancy progress bars don't render in basic terminals)
+- **Fix:** Install [Windows Terminal](https://aka.ms/terminal) or use `venv\Scripts\python.exe` directly
+- See [SETUP_GUIDE.md](SETUP_GUIDE.md#problem-unicodeencodeerror-on-windows) for more solutions
 
 ## Next Steps
 

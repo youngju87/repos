@@ -128,42 +128,43 @@ Chromium 119.0.6045.9 downloaded successfully
 
 ## Database Setup
 
-### Step 8: Initialize SQLite Database
+### Step 8: Configure Database
 
-The audit engine stores results in a SQLite database. Let's create it:
+The audit engine can use either PostgreSQL (with Docker) or SQLite (simpler, no Docker needed).
+
+#### Option A: SQLite (Recommended for Getting Started)
+
+SQLite is already configured in your `.env` file:
 
 ```bash
-python scripts/init_db.py
+DATABASE_URL=sqlite:///./analytics_audit.db
 ```
 
-**Expected Output:**
+✅ No additional setup needed! The database will be created automatically on first use.
 
-```
-============================================================
-Analytics Audit Engine - Database Initialization
-============================================================
+#### Option B: PostgreSQL (For Production)
 
-Connecting to database: audit_engine.db
+If you prefer PostgreSQL:
 
-Creating database schema...
-  ✓ Table 'audits' created
-  ✓ Table 'pages' created
-  ✓ Table 'findings' created
+1. Install Docker Desktop
+2. Start PostgreSQL:
+   ```bash
+   docker-compose up -d
+   ```
+3. Update `.env`:
+   ```bash
+   # Comment out SQLite
+   # DATABASE_URL=sqlite:///./analytics_audit.db
 
-✓ Database initialized successfully!
+   # Uncomment PostgreSQL settings
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=analytics_audit
+   DB_USER=audituser
+   DB_PASSWORD=auditpass123
+   ```
 
-Database file: audit_engine.db
-Location: C:\Users\Justin\...\analytics-audit-engine\audit_engine.db
-
-Tables created:
-  • audits      - Stores audit runs
-  • pages       - Stores crawled pages
-  • findings    - Stores detected issues
-
-Ready to run audits!
-```
-
-✅ A file `audit_engine.db` should appear in your project folder.
+**Note:** PostgreSQL provides better performance for large-scale audits, but SQLite works great for most use cases.
 
 ---
 
@@ -605,6 +606,52 @@ Then try activating again.
 # Reinstall dependencies
 pip install -r requirements.txt
 ```
+
+### Problem: UnicodeEncodeError on Windows
+
+**Symptom:** `UnicodeEncodeError: 'charmap' codec can't encode character` when running audits
+
+**Cause:** Windows PowerShell/CMD doesn't support Unicode characters used by the `rich` progress bars
+
+**Solutions:**
+
+**Option 1: Use Windows Terminal (Recommended)**
+- Install [Windows Terminal](https://aka.ms/terminal) from Microsoft Store
+- Supports full Unicode rendering
+- Better overall terminal experience
+
+**Option 2: Set encoding environment variable**
+```powershell
+$env:PYTHONIOENCODING="utf-8"
+python audit_cli.py scan --url https://yoursite.com --max-pages 5
+```
+
+**Option 3: Use Python library instead of CLI**
+- See [example_usage.py](example_usage.py) for programmatic usage
+- Avoids terminal rendering issues completely
+
+**Note:** The tool still works despite the error - pages are crawled successfully. The error is cosmetic and only affects the progress display.
+
+### Problem: Virtual environment not activating in VS Code
+
+**Symptom:** Running `python --version` shows wrong Python (e.g., Anaconda instead of venv)
+
+**Solutions:**
+
+**Option 1: Use full path to venv Python**
+```powershell
+venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com
+```
+
+**Option 2: Reload VS Code window**
+1. Press `Ctrl+Shift+P`
+2. Type: `Developer: Reload Window`
+3. Open new terminal - should auto-activate
+
+**Option 3: Close and reopen folder**
+- Close VS Code
+- File → Open Folder
+- Select `analytics-audit-engine` folder directly (not parent folder)
 
 ---
 

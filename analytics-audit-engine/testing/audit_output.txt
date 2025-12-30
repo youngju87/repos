@@ -1,0 +1,78 @@
+                                                                               
+                            Analytics Audit Engine                             
+Auditing: https://www.cambriausa.com
+
+2025-12-29 16:32:15,154 - crawler.page_crawler - INFO - Starting crawl of https://www.cambriausa.com (max 3 pages)
+2025-12-29 16:32:42,236 - crawler.page_crawler - INFO - Crawled 1/3: https://www.cambriausa.com
+2025-12-29 16:32:56,681 - crawler.page_crawler - INFO - Crawled 2/3: https://www.cambriausa.com/dealer-locator/pro-locations
+2025-12-29 16:33:08,504 - crawler.page_crawler - INFO - Crawled 3/3: https://www.cambriausa.com/quartz-countertops/faq
+2025-12-29 16:33:09,419 - crawler.page_crawler - INFO - Crawl complete. Processed 3 pages
+Traceback (most recent call last):
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\audit_cli.py", line 73, in scan
+    with Progress(
+         ^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\progress.py", line 1177, in __exit__
+    self.stop()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\progress.py", line 1163, in stop
+    self.live.stop()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\live.py", line 147, in stop
+    with self.console:
+         ^^^^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 865, in __exit__
+    self._exit_buffer()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 823, in _exit_buffer
+    self._check_buffer()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 2027, in _check_buffer
+    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\_windows_renderer.py", line 17, in legacy_windows_render
+    term.write_styled(text, style)
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\_win32_console.py", line 442, in write_styled
+    self.write_text(text)
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\_win32_console.py", line 403, in write_text
+    self.write(text)
+  File "C:\Users\Justin\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2807' in position 0: character maps to <undefined>
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\audit_cli.py", line 260, in <module>
+    cli()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\click\core.py", line 1157, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\click\core.py", line 1078, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\click\core.py", line 1688, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\click\core.py", line 1434, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\click\core.py", line 783, in invoke
+    return __callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\audit_cli.py", line 132, in scan
+    console.print(f"[bold red]Error:[/bold red] {str(e)}")
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 1673, in print
+    with self:
+         ^^^^
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 865, in __exit__
+    self._exit_buffer()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 823, in _exit_buffer
+    self._check_buffer()
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\console.py", line 2027, in _check_buffer
+    legacy_windows_render(buffer, LegacyWindowsTerm(self.file))
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\_windows_renderer.py", line 17, in legacy_windows_render
+    term.write_styled(text, style)
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\_win32_console.py", line 442, in write_styled
+    self.write_text(text)
+  File "C:\Users\Justin\source\repos\analytics-audit-engine\venv\Lib\site-packages\rich\_win32_console.py", line 403, in write_text
+    self.write(text)
+  File "C:\Users\Justin\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2807' in position 0: character maps to <undefined>
