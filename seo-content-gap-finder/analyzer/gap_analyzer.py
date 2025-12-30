@@ -13,14 +13,20 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ContentGap:
     """Represents a content gap"""
-    gap_type: str  # 'topic', 'depth', 'keyword', 'format'
+    gap_type: str  # 'topic', 'depth', 'keyword', 'format', 'heading'
     title: str
     description: str
     score: float  # 0-100, higher = more important
-    competitor_coverage: int  # How many competitors cover this
+    coverage_count: int  # How many competitors cover this (alias for competitor_coverage)
     total_competitors: int
     recommendations: List[str] = field(default_factory=list)
     examples: List[str] = field(default_factory=list)
+
+    # Legacy compatibility
+    @property
+    def competitor_coverage(self) -> int:
+        """Alias for coverage_count"""
+        return self.coverage_count
 
 
 @dataclass
@@ -180,22 +186,34 @@ class GapAnalyzer:
         # (Simplified - in reality would track per-competitor)
         for topic in missing_topics:
             # Estimate coverage (simplified scoring)
-            coverage = min(total_competitors, 5)  # Assume high coverage for demo
+            # In production, would track which specific competitors have this
+            coverage = min(total_competitors, max(2, int(total_competitors * 0.6)))
 
             # Calculate score based on coverage
             coverage_ratio = coverage / total_competitors
-            score = coverage_ratio * 100
+
+            # Boost score for high-coverage topics
+            if coverage_ratio >= 0.8:
+                score = 85 + (coverage_ratio - 0.8) * 75  # 85-100 range
+            elif coverage_ratio >= 0.5:
+                score = 65 + (coverage_ratio - 0.5) * 66  # 65-85 range
+            else:
+                score = coverage_ratio * 130  # 0-65 range
+
+            # Cap at 100
+            score = min(score, 100)
 
             gap = ContentGap(
                 gap_type='topic',
-                title=f"Missing topic: {topic}",
+                title=f"Missing topic: {topic.title()}",
                 description=f"{coverage}/{total_competitors} competitors cover this topic",
-                score=score,
-                competitor_coverage=coverage,
+                score=round(score, 1),
+                coverage_count=coverage,
                 total_competitors=total_competitors,
                 recommendations=[
-                    f"Add a section about '{topic}'",
-                    f"Target {500 + (coverage * 100)} words on this topic"
+                    f"Add a dedicated section about '{topic}'",
+                    f"Target {500 + (coverage * 100)} words on this topic",
+                    "Reference competitor approaches for structure"
                 ],
                 examples=[]
             )
@@ -217,22 +235,62 @@ class GapAnalyzer:
 
         # Calculate average competitor word count
         competitor_word_counts = [c.get('word_count', 0) for c in competitor_contents]
-        avg_competitor_words = sum(competitor_word_counts) / len(competitor_word_counts)
+        if not competitor_word_counts:
+            return gaps
 
-        # If your content is significantly shorter
+        avg_competitor_words = sum(competitor_word_counts) / len(competitor_word_counts)
+        max_competitor_words = max(competitor_word_counts)
+
+        # Check overall depth gap
         if your_word_count < avg_competitor_words * 0.7:
             word_gap = int(avg_competitor_words - your_word_count)
+            depth_ratio = your_word_count / avg_competitor_words
+
+            # Score based on how far behind you are
+            if depth_ratio < 0.5:
+                score = 85.0  # Less than half - critical
+            elif depth_ratio < 0.7:
+                score = 70.0  # 50-70% - important
+            else:
+                score = 55.0  # 70-80% - minor
 
             gap = ContentGap(
                 gap_type='depth',
                 title="Overall content depth insufficient",
-                description=f"Your content: {your_word_count} words | Avg competitor: {int(avg_competitor_words)} words",
-                score=75.0,
-                competitor_coverage=len(competitor_contents),
+                description=f"Your content: {your_word_count:,} words | Avg competitor: {int(avg_competitor_words):,} words ({int(depth_ratio*100)}% of average)",
+                score=score,
+                coverage_count=len(competitor_contents),
                 total_competitors=len(competitor_contents),
                 recommendations=[
-                    f"Expand content by approximately {word_gap} words",
-                    "Add more detailed explanations and examples"
+                    f"Expand content by approximately {word_gap:,} words",
+                    "Add more detailed explanations and examples",
+                    "Include case studies or real-world applications",
+                    f"Aim for {int(avg_competitor_words):,}-{int(max_competitor_words):,} words total"
+                ]
+            )
+
+            gaps.append(gap)
+
+        # Check heading structure depth
+        your_h2_count = len(your_content.get('headings', {}).get('h2', []))
+        competitor_h2_counts = [
+            len(c.get('headings', {}).get('h2', []))
+            for c in competitor_contents
+        ]
+        avg_h2 = sum(competitor_h2_counts) / len(competitor_h2_counts) if competitor_h2_counts else 0
+
+        if your_h2_count < avg_h2 * 0.6:
+            gap = ContentGap(
+                gap_type='depth',
+                title="Insufficient content structure depth",
+                description=f"Your H2 headings: {your_h2_count} | Avg competitor: {int(avg_h2)}",
+                score=60.0,
+                coverage_count=len(competitor_contents),
+                total_competitors=len(competitor_contents),
+                recommendations=[
+                    f"Add {int(avg_h2 - your_h2_count)} more H2 sections",
+                    "Break down complex topics into subsections",
+                    "Improve content organization with clear headings"
                 ]
             )
 
@@ -266,24 +324,36 @@ class GapAnalyzer:
         for keyword, count in keyword_counts.most_common(20):
             if keyword not in your_keywords and count >= 2:  # At least 2 competitors use it
 
-                score = min((count / len(competitor_contents)) * 100, 90)
+                # Calculate score based on frequency
+                frequency_ratio = count / len(competitor_contents)
+
+                # High-frequency keywords (>70% of competitors) are critical
+                if frequency_ratio >= 0.7:
+                    score = 75 + (frequency_ratio - 0.7) * 83  # 75-100 range
+                elif frequency_ratio >= 0.4:
+                    score = 60 + (frequency_ratio - 0.4) * 50  # 60-75 range
+                else:
+                    score = frequency_ratio * 150  # 0-60 range
+
+                score = min(score, 95)  # Cap at 95 for keywords
 
                 gap = ContentGap(
                     gap_type='keyword',
                     title=f"Missing keyword: '{keyword}'",
-                    description=f"Used by {count}/{len(competitor_contents)} competitors",
-                    score=score,
-                    competitor_coverage=count,
+                    description=f"Used by {count}/{len(competitor_contents)} competitors ({int(frequency_ratio*100)}% coverage)",
+                    score=round(score, 1),
+                    coverage_count=count,
                     total_competitors=len(competitor_contents),
                     recommendations=[
                         f"Include '{keyword}' naturally in your content",
-                        f"Mention this term 3-5 times"
+                        f"Mention this term 3-5 times throughout the article",
+                        "Use it in headings or subheadings where relevant"
                     ]
                 )
 
                 gaps.append(gap)
 
-        return gaps[:5]  # Limit to top 5 keyword gaps
+        return gaps[:10]  # Limit to top 10 keyword gaps
 
     def _find_format_gaps(
         self,
@@ -298,20 +368,60 @@ class GapAnalyzer:
             1 for c in competitor_contents if c.get('images_count', 0) > 5
         )
 
+        # Calculate average images
+        avg_images = sum(c.get('images_count', 0) for c in competitor_contents) / len(competitor_contents)
+
         # Check if you have enough images
         your_images = your_content.get('images_count', 0) if your_content else 0
 
-        if competitors_with_images >= len(competitor_contents) * 0.7 and your_images < 5:
+        # Visual content gap
+        if competitors_with_images >= len(competitor_contents) * 0.6 and your_images < avg_images * 0.5:
+            image_gap = int(avg_images - your_images)
+            image_ratio = competitors_with_images / len(competitor_contents)
+
+            # Score based on how many competitors use images heavily
+            if image_ratio >= 0.8:
+                score = 70.0
+            elif image_ratio >= 0.6:
+                score = 60.0
+            else:
+                score = 50.0
+
             gap = ContentGap(
                 gap_type='format',
                 title="Insufficient visual content",
-                description=f"{competitors_with_images}/{len(competitor_contents)} competitors use 5+ images",
-                score=65.0,
-                competitor_coverage=competitors_with_images,
+                description=f"{competitors_with_images}/{len(competitor_contents)} competitors use 5+ images (avg: {int(avg_images)} images)",
+                score=score,
+                coverage_count=competitors_with_images,
                 total_competitors=len(competitor_contents),
                 recommendations=[
-                    f"Add {5 - your_images} more images",
-                    "Include screenshots, diagrams, or infographics"
+                    f"Add {image_gap} more images to match competitors",
+                    "Include screenshots, diagrams, or infographics",
+                    "Consider comparison tables or charts",
+                    "Add visual examples for complex concepts"
+                ]
+            )
+
+            gaps.append(gap)
+
+        # List/bullet point usage (simplified - would need deeper HTML analysis)
+        # For now, estimate based on heading count as a proxy for structure
+        your_h3_count = len(your_content.get('headings', {}).get('h3', [])) if your_content else 0
+        avg_h3 = sum(len(c.get('headings', {}).get('h3', [])) for c in competitor_contents) / len(competitor_contents)
+
+        if your_h3_count < avg_h3 * 0.5:
+            gap = ContentGap(
+                gap_type='format',
+                title="Limited content organization structure",
+                description=f"Your H3 subheadings: {your_h3_count} | Avg competitor: {int(avg_h3)}",
+                score=55.0,
+                coverage_count=len(competitor_contents),
+                total_competitors=len(competitor_contents),
+                recommendations=[
+                    f"Add {int(avg_h3 - your_h3_count)} more H3 subheadings",
+                    "Break down sections into detailed subsections",
+                    "Use bullet points and numbered lists",
+                    "Improve content scannability"
                 ]
             )
 

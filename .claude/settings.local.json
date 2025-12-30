@@ -10,7 +10,8 @@
       "Bash(dir:*)",
       "Bash(del analytics_audit.db)",
       "Bash(timeout 120 venv/Scripts/python.exe:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

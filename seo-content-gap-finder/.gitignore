@@ -1,0 +1,160 @@
+# SEO Content Gap Finder - .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Cache Files (v2.0)
+*.db
+.content_cache.db
+.serp_cache.db
+.test_cache.db
+.test_serp.db
+
+# Test cache files
+testing/*.db
+*.db-journal
+
+# Reports and Output
+reports/
+results/
+output/
+*.json
+*.md
+*.csv
+!README.md
+!*.md
+# Keep documentation markdown files
+!CHANGELOG.md
+!SETUP_GUIDE.md
+!DEPLOYMENT_GUIDE.md
+!REFACTORING_COMPLETE.md
+!REFACTORING_PROGRESS.md
+!CODEBASE_ASSESSMENT.md
+!QUICKSTART.md
+
+# Logs
+*.log
+logs/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Playwright
+.playwright/
+playwright/.cache/
+
+# spaCy models (downloaded separately)
+*.model
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# IPython
+profile_default/
+ipython_config.py
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
