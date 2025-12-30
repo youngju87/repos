@@ -91,6 +91,16 @@ analytics-audit-engine/
 ## 💼 Use Cases
 
 ### For Freelancers/Consultants
+
+**Windows:**
+```bash
+# Generate client audit report
+venv\Scripts\python.exe audit_cli.py scan --url https://clientsite.com --max-pages 100 --format pdf
+
+# Send PDF to client showing $10k+ worth of findings
+```
+
+**Mac/Linux:**
 ```bash
 # Generate client audit report
 python audit_cli.py scan --url https://clientsite.com --max-pages 100 --format pdf

@@ -20,7 +20,7 @@ Comprehensive setup instructions to get the Analytics Audit Engine running on yo
 
 ### Required Software
 
-- **Python 3.11+** - [Download](https://www.python.org/downloads/)
+- **Python 3.12+** - [Download](https://www.python.org/downloads/) - Use `py --version` on Windows to check
 - **VS Code** (recommended) - [Download](https://code.visualstudio.com/)
 - **Internet connection** (for crawling websites)
 
@@ -52,25 +52,32 @@ Press `` Ctrl + ` `` (backtick key) or:
 
 ### Step 3: Create Virtual Environment
 
+**Windows:**
 In the terminal:
 
 ```bash
-python -m venv venv
+py -3.12 -m venv venv
 ```
 
 Wait ~30 seconds. A `venv` folder will appear.
 
-### Step 4: Activate Virtual Environment
-
-**Windows (Command Prompt):**
+**Mac/Linux:**
 ```bash
-venv\Scripts\activate
+python3 -m venv venv
 ```
 
-**Windows (PowerShell):**
+### Step 4: Using Virtual Environment
+
+**Windows (Recommended - No Activation Needed):**
+
+Instead of activating the virtual environment (which requires changing PowerShell execution policy), use the Python executable directly:
+
 ```bash
-venv\Scripts\Activate.ps1
+# This works without activation and avoids permission issues
+venv\Scripts\python.exe --version
 ```
+
+✅ You should see: `Python 3.12.x`
 
 **Mac/Linux:**
 ```bash
@@ -79,7 +86,12 @@ source venv/bin/activate
 
 ✅ You should see `(venv)` at the start of your terminal line:
 ```
-(venv) C:\Users\Justin\source\repos\working\analytics-audit-engine>
+(venv) ~/analytics-audit-engine$
+```
+
+**Note for Windows PowerShell users:** If you want to activate the venv traditionally, you'll need to bypass execution policy:
+```powershell
+powershell -ExecutionPolicy Bypass -Command "& {.\venv\Scripts\Activate.ps1}"
 ```
 
 ### Step 5: Select Python Interpreter
@@ -95,7 +107,15 @@ source venv/bin/activate
 
 ### Step 6: Install Python Packages
 
+**Windows:**
 ```bash
+venv\Scripts\python.exe -m pip install --upgrade pip
+venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+**Mac/Linux (with venv activated):**
+```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
@@ -113,6 +133,12 @@ Successfully installed playwright-1.40.0 ...
 
 Playwright needs a browser to crawl websites:
 
+**Windows:**
+```bash
+venv\Scripts\python.exe -m playwright install chromium
+```
+
+**Mac/Linux (with venv activated):**
 ```bash
 playwright install chromium
 ```
@@ -176,12 +202,18 @@ Let's run your first analytics audit!
 
 We'll audit a demo website to verify everything works:
 
+**Windows:**
 ```bash
-python audit_cli.py crawl https://demo.playwright.dev/todomvc --max-pages 5
+venv\Scripts\python.exe audit_cli.py scan --url https://demo.playwright.dev/todomvc --max-pages 5
+```
+
+**Mac/Linux (with venv activated):**
+```bash
+python audit_cli.py scan --url https://demo.playwright.dev/todomvc --max-pages 5
 ```
 
 **What this command does:**
-- Crawls the demo website
+- Scans the demo website
 - Checks up to 5 pages
 - Detects analytics tools (GA4, GTM, Meta Pixel, etc.)
 - Stores results in database
@@ -344,8 +376,14 @@ xdg-open reports/audit_1_report.html
 
 ### Use Case 1: Audit Your Own Website
 
+**Windows:**
 ```bash
-python audit_cli.py crawl https://yourwebsite.com --max-pages 20
+venv\Scripts\python.exe audit_cli.py scan --url https://yourwebsite.com --max-pages 20
+```
+
+**Mac/Linux:**
+```bash
+python audit_cli.py scan --url https://yourwebsite.com --max-pages 20
 ```
 
 **What you get:**
@@ -365,8 +403,14 @@ python audit_cli.py crawl https://yourwebsite.com --max-pages 20
 
 **Scenario:** Audit a client's website before proposal
 
+**Windows:**
 ```bash
-python audit_cli.py crawl https://clientwebsite.com --max-pages 50
+venv\Scripts\python.exe audit_cli.py scan --url https://clientwebsite.com --max-pages 50
+```
+
+**Mac/Linux:**
+```bash
+python audit_cli.py scan --url https://clientwebsite.com --max-pages 50
 ```
 
 **Deliverables:**
@@ -383,8 +427,14 @@ python audit_cli.py crawl https://clientwebsite.com --max-pages 50
 
 **Scenario:** Ensure GDPR/privacy compliance
 
+**Windows:**
 ```bash
-python audit_cli.py crawl https://website.com --max-pages 30
+venv\Scripts\python.exe audit_cli.py scan --url https://website.com --max-pages 30
+```
+
+**Mac/Linux:**
+```bash
+python audit_cli.py scan --url https://website.com --max-pages 30
 ```
 
 **Check for:**
@@ -399,14 +449,20 @@ python audit_cli.py crawl https://website.com --max-pages 30
 
 **Scenario:** See what analytics competitors use
 
+**Windows:**
 ```bash
 # Audit multiple competitors
-python audit_cli.py crawl https://competitor1.com --max-pages 10
-python audit_cli.py crawl https://competitor2.com --max-pages 10
-python audit_cli.py crawl https://competitor3.com --max-pages 10
+venv\Scripts\python.exe audit_cli.py scan --url https://competitor1.com --max-pages 10
+venv\Scripts\python.exe audit_cli.py scan --url https://competitor2.com --max-pages 10
+venv\Scripts\python.exe audit_cli.py scan --url https://competitor3.com --max-pages 10
+```
 
-# List all audits
-python audit_cli.py list
+**Mac/Linux:**
+```bash
+# Audit multiple competitors
+python audit_cli.py scan --url https://competitor1.com --max-pages 10
+python audit_cli.py scan --url https://competitor2.com --max-pages 10
+python audit_cli.py scan --url https://competitor3.com --max-pages 10
 ```
 
 **Insights:**
@@ -418,72 +474,46 @@ python audit_cli.py list
 
 ## Command Reference
 
-### Crawl Website
+### Scan Website
 
+**Windows:**
 ```bash
-python audit_cli.py crawl <URL> [OPTIONS]
+venv\Scripts\python.exe audit_cli.py scan --url <URL> [OPTIONS]
+```
+
+**Mac/Linux:**
+```bash
+python audit_cli.py scan --url <URL> [OPTIONS]
 ```
 
 **Options:**
-- `--max-pages 20` - Maximum pages to crawl (default: 50)
-- `--depth 3` - Link depth to follow (default: 3)
+- `--url` - Website URL to audit (required)
+- `--max-pages 20` - Maximum pages to scan (default: 50)
+- `--format html` - Report format: html, pdf, or both (default: html)
+- `--output ./reports` - Output directory (default: ./reports)
 
-**Examples:**
+**Examples (Windows):**
 ```bash
 # Quick audit (10 pages)
-python audit_cli.py crawl https://example.com --max-pages 10
+venv\Scripts\python.exe audit_cli.py scan --url https://example.com --max-pages 10
 
 # Deep audit (100 pages)
-python audit_cli.py crawl https://example.com --max-pages 100 --depth 5
+venv\Scripts\python.exe audit_cli.py scan --url https://example.com --max-pages 100
 ```
 
-### Generate Report
+### View Previous Audit
 
+**Windows:**
 ```bash
-python audit_cli.py report <AUDIT_ID> [OPTIONS]
+venv\Scripts\python.exe audit_cli.py view --audit-id <AUDIT_ID>
 ```
 
-**Options:**
-- `--format html` - HTML report (default)
-- `--format pdf` - PDF report (requires weasyprint)
-- `--output custom_name.html` - Custom filename
-
-**Examples:**
+**Mac/Linux:**
 ```bash
-# HTML report
-python audit_cli.py report 1
-
-# PDF report (install weasyprint first)
-pip install weasyprint
-python audit_cli.py report 1 --format pdf
-
-# Custom filename
-python audit_cli.py report 1 --output client_audit.html
+python audit_cli.py view --audit-id <AUDIT_ID>
 ```
 
-### List All Audits
-
-```bash
-python audit_cli.py list
-```
-
-Shows all audits with dates, URLs, and scores.
-
-### Show Audit Details
-
-```bash
-python audit_cli.py show <AUDIT_ID>
-```
-
-Display audit summary in terminal without generating report.
-
-### Delete Audit
-
-```bash
-python audit_cli.py delete <AUDIT_ID>
-```
-
-Remove audit and all associated data from database.
+Display audit summary and results in terminal.
 
 ---
 
@@ -500,10 +530,17 @@ https://site2.com
 https://site3.com
 ```
 
-Run:
+**Windows (PowerShell):**
+```powershell
+Get-Content sites.txt | ForEach-Object {
+  venv\Scripts\python.exe audit_cli.py scan --url $_ --max-pages 20
+}
+```
+
+**Mac/Linux:**
 ```bash
 while read url; do
-  python audit_cli.py crawl "$url" --max-pages 20
+  python audit_cli.py scan --url "$url" --max-pages 20
 done < sites.txt
 ```
 
@@ -513,10 +550,8 @@ done < sites.txt
 ```bash
 # Create batch file: audit_weekly.bat
 @echo off
-cd C:\Users\Justin\source\repos\working\analytics-audit-engine
-call venv\Scripts\activate
-python audit_cli.py crawl https://yoursite.com --max-pages 30
-python audit_cli.py report latest --output weekly_audit.html
+cd C:\Users\Justin\source\repos\analytics-audit-engine
+venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com --max-pages 30
 ```
 
 Schedule in Task Scheduler to run weekly.
@@ -527,17 +562,8 @@ Schedule in Task Scheduler to run weekly.
 crontab -e
 
 # Add weekly audit (Mondays at 9 AM)
-0 9 * * 1 cd /path/to/analytics-audit-engine && ./venv/bin/python audit_cli.py crawl https://yoursite.com
+0 9 * * 1 cd /path/to/analytics-audit-engine && ./venv/bin/python audit_cli.py scan --url https://yoursite.com --max-pages 30
 ```
-
-### Export to CSV
-
-```bash
-# Get findings as CSV
-python audit_cli.py export 1 --format csv
-```
-
-Creates `audit_1_findings.csv` for spreadsheet analysis.
 
 ---
 
@@ -572,10 +598,13 @@ python scripts/init_db.py
 
 **Solutions:**
 ```bash
-# Reduce max pages
-python audit_cli.py crawl https://site.com --max-pages 5
+# Reduce max pages (Windows)
+venv\Scripts\python.exe audit_cli.py scan --url https://site.com --max-pages 5
 
-# Increase timeout (edit crawler/analytics_crawler.py)
+# Mac/Linux
+python audit_cli.py scan --url https://site.com --max-pages 5
+
+# Increase timeout (edit crawler/page_crawler.py)
 # Change timeout in page.goto() from 30000 to 60000
 ```
 
@@ -591,12 +620,17 @@ Check GTM container - if GTM detected, GA4 likely configured there.
 
 ### Problem: PowerShell won't activate venv
 
-**Solution:**
+**Solution (Recommended):**
+Don't activate - use the Python executable directly:
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com
 ```
 
-Then try activating again.
+**Alternative - Change Execution Policy:**
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+venv\Scripts\Activate.ps1
+```
 
 ### Problem: "Module not found" errors
 
@@ -623,7 +657,7 @@ pip install -r requirements.txt
 **Option 2: Set encoding environment variable**
 ```powershell
 $env:PYTHONIOENCODING="utf-8"
-python audit_cli.py scan --url https://yoursite.com --max-pages 5
+venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com --max-pages 5
 ```
 
 **Option 3: Use Python library instead of CLI**
@@ -661,24 +695,28 @@ venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com
 
 1. **Reduce page count:**
    ```bash
-   python audit_cli.py crawl https://site.com --max-pages 10
+   # Windows
+   venv\Scripts\python.exe audit_cli.py scan --url https://site.com --max-pages 10
+
+   # Mac/Linux
+   python audit_cli.py scan --url https://site.com --max-pages 10
    ```
 
-2. **Reduce depth:**
+2. **Target specific sections:**
    ```bash
-   python audit_cli.py crawl https://site.com --max-pages 20 --depth 2
-   ```
-
-3. **Target specific sections:**
-   ```bash
-   python audit_cli.py crawl https://site.com/blog --max-pages 15
+   # Windows
+   venv\Scripts\python.exe audit_cli.py scan --url https://site.com/blog --max-pages 15
    ```
 
 ### For More Accurate Audits
 
 1. **Increase page count:**
    ```bash
-   python audit_cli.py crawl https://site.com --max-pages 100
+   # Windows
+   venv\Scripts\python.exe audit_cli.py scan --url https://site.com --max-pages 100
+
+   # Mac/Linux
+   python audit_cli.py scan --url https://site.com --max-pages 100
    ```
 
 2. **Check all site sections:**
@@ -699,13 +737,20 @@ venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com
 **Goal:** Deliver comprehensive analytics audit
 
 **Day 1: Initial Audit**
+
+**Windows:**
 ```bash
 # Run comprehensive audit
-python audit_cli.py crawl https://clientsite.com --max-pages 50
-
-# Generate report
-python audit_cli.py report 1 --output client_initial_audit.html
+venv\Scripts\python.exe audit_cli.py scan --url https://clientsite.com --max-pages 50
 ```
+
+**Mac/Linux:**
+```bash
+# Run comprehensive audit
+python audit_cli.py scan --url https://clientsite.com --max-pages 50
+```
+
+The scan command automatically generates an HTML report in the `./reports/` directory.
 
 **Day 2: Analysis**
 - Review report
@@ -725,13 +770,29 @@ python audit_cli.py report 1 --output client_initial_audit.html
 - Add consent management
 
 **Week 3: Re-Audit**
+
+**Windows:**
 ```bash
 # Verify fixes
-python audit_cli.py crawl https://clientsite.com --max-pages 50
+venv\Scripts\python.exe audit_cli.py scan --url https://clientsite.com --max-pages 50
 
-# Compare before/after
-python audit_cli.py show 1  # Original audit
-python audit_cli.py show 2  # After fixes
+# View original audit
+venv\Scripts\python.exe audit_cli.py view --audit-id 1
+
+# View after fixes
+venv\Scripts\python.exe audit_cli.py view --audit-id 2
+```
+
+**Mac/Linux:**
+```bash
+# Verify fixes
+python audit_cli.py scan --url https://clientsite.com --max-pages 50
+
+# View original audit
+python audit_cli.py view --audit-id 1
+
+# View after fixes
+python audit_cli.py view --audit-id 2
 ```
 
 **Deliverable:**
@@ -746,21 +807,19 @@ python audit_cli.py show 2  # After fixes
 ```
 analytics-audit-engine/
 ├── crawler/
-│   └── analytics_crawler.py       # Website crawler
+│   └── page_crawler.py            # Website crawler
 ├── analyzer/
-│   └── audit_analyzer.py          # Findings analyzer
+│   └── audit_analyzer.py          # Audit analyzer
 ├── reports/
 │   ├── report_generator.py        # HTML/PDF generator
-│   └── audit_1_report.html        # Generated reports
+│   └── *.html                     # Generated reports
 ├── database/
-│   ├── models.py                  # Data models
-│   └── db_manager.py              # Database operations
-├── scripts/
-│   └── init_db.py                 # Database setup
+│   └── models.py                  # Data models
 ├── audit_cli.py                   # Main CLI tool
-├── audit_engine.db                # SQLite database
+├── init_db.py                     # Database setup
+├── analytics_audit.db             # SQLite database
 ├── requirements.txt
-└── SETUP_GUIDE.md                # This file
+└── SETUP_GUIDE.md                 # This file
 ```
 
 ---
@@ -783,7 +842,7 @@ If all checked, you're ready to audit websites! ✅
 
 ### 1. Customize Detection
 
-Edit `crawler/analytics_crawler.py` to detect more tools:
+Edit `crawler/page_crawler.py` to detect more tools:
 - Add custom analytics platforms
 - Detect consent management platforms
 - Check for privacy compliance

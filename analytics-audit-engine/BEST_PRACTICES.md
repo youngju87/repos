@@ -19,8 +19,14 @@
 - Finds 90% of issues
 - Good for client presentations
 
+**Windows:**
 ```bash
 venv\Scripts\python.exe audit_cli.py scan --url https://clientsite.com --max-pages 30 --format html
+```
+
+**Mac/Linux:**
+```bash
+python audit_cli.py scan --url https://clientsite.com --max-pages 30 --format html
 ```
 
 ---

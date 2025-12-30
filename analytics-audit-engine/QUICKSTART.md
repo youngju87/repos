@@ -4,7 +4,7 @@ Get up and running in 10 minutes.
 
 ## Prerequisites
 
-- Python 3.11+ (3.12 recommended)
+- Python 3.12+ (check with `py --version` on Windows or `python3 --version` on Mac/Linux)
 - Internet connection (for crawling websites)
 - Docker Desktop (optional - only needed for PostgreSQL)
 
@@ -34,19 +34,32 @@ Then update `.env` to use PostgreSQL instead of SQLite.
 
 ### 2. Install Python Dependencies (3 minutes)
 
+**Windows:**
+```bash
+# Create virtual environment with Python 3.12
+py -3.12 -m venv venv
+
+# Install packages (no activation needed - avoids PowerShell execution policy issues)
+venv\Scripts\python.exe -m pip install --upgrade pip
+venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# Install Playwright browsers (required for JavaScript rendering)
+venv\Scripts\python.exe -m playwright install chromium
+```
+
+**Mac/Linux:**
 ```bash
 # Create virtual environment
-python -m venv venv
+python3 -m venv venv
 
-# Activate (Windows)
-venv\Scripts\activate
-# Or Mac/Linux
+# Activate
 source venv/bin/activate
 
 # Install packages
+pip install --upgrade pip
 pip install -r requirements.txt
 
-# Install Playwright browsers (required for JavaScript rendering)
+# Install Playwright browsers
 playwright install chromium
 ```
 
@@ -65,12 +78,24 @@ cp .env.example .env
 
 ### Example 1: Audit a Demo Site
 
+**Windows:**
+```bash
+venv\Scripts\python.exe audit_cli.py scan --url https://demo.google.com/analytics --max-pages 5
+```
+
+**Mac/Linux (with venv activated):**
 ```bash
 python audit_cli.py scan --url https://demo.google.com/analytics --max-pages 5
 ```
 
 ### Example 2: Audit Your Own Site
 
+**Windows:**
+```bash
+venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com --max-pages 20 --format both
+```
+
+**Mac/Linux (with venv activated):**
 ```bash
 python audit_cli.py scan --url https://yoursite.com --max-pages 20 --format both
 ```
@@ -110,10 +135,14 @@ Full report saved to: `./reports/audit_yoursite_20250101_120000.html`
 
 ## View Previous Audits
 
+**Windows:**
 ```bash
-# List audits (coming soon)
-python audit_cli.py list
+# View specific audit
+venv\Scripts\python.exe audit_cli.py view --audit-id <audit-id-from-output>
+```
 
+**Mac/Linux (with venv activated):**
+```bash
 # View specific audit
 python audit_cli.py view --audit-id <audit-id-from-output>
 ```
@@ -122,6 +151,12 @@ python audit_cli.py view --audit-id <audit-id-from-output>
 
 ### Audit Client Website
 
+**Windows:**
+```bash
+venv\Scripts\python.exe audit_cli.py scan --url https://clientsite.com --max-pages 100 --format pdf
+```
+
+**Mac/Linux:**
 ```bash
 python audit_cli.py scan --url https://clientsite.com --max-pages 100 --format pdf
 ```
@@ -130,12 +165,24 @@ Then send them the PDF report!
 
 ### Quick Homepage Check
 
+**Windows:**
+```bash
+venv\Scripts\python.exe audit_cli.py scan --url https://site.com --max-pages 1
+```
+
+**Mac/Linux:**
 ```bash
 python audit_cli.py scan --url https://site.com --max-pages 1
 ```
 
 ### Deep Site Audit
 
+**Windows:**
+```bash
+venv\Scripts\python.exe audit_cli.py scan --url https://site.com --max-pages 200
+```
+
+**Mac/Linux:**
 ```bash
 python audit_cli.py scan --url https://site.com --max-pages 200
 ```
@@ -176,8 +223,11 @@ playwright install chromium
 # Make sure you're in the project directory
 cd analytics-audit-engine
 
-# And virtual environment is activated
-source venv/bin/activate  # or venv\Scripts\activate on Windows
+# Use the venv Python directly (Windows)
+venv\Scripts\python.exe audit_cli.py scan --url https://yoursite.com
+
+# Or activate venv (Mac/Linux)
+source venv/bin/activate
 ```
 
 ### Slow crawling

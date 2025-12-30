@@ -130,22 +130,29 @@ See [CHANGELOG.md](CHANGELOG.md) for full details.
 ## Quick Start
 
 ```bash
-# 1. Create virtual environment
-python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Mac/Linux
+# 1. Create virtual environment (Windows)
+py -3.12 -m venv venv
+# Or use the full path to avoid activation issues
+venv\Scripts\python.exe -m pip install --upgrade pip
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# For Mac/Linux:
+# python3 -m venv venv
+# source venv/bin/activate
+
+# 2. Install dependencies (Windows - no activation needed)
+venv\Scripts\python.exe -m pip install -r requirements.txt
+
+# For Mac/Linux (after activating venv):
+# pip install -r requirements.txt
 
 # 3. Install Playwright browsers
-playwright install chromium
+venv\Scripts\python.exe -m playwright install chromium
 
 # 4. Initialize database (creates SQLite database)
-python init_db.py
+venv\Scripts\python.exe init_db.py
 
 # 5. Run your first audit
-python audit_cli.py scan --url https://example.com --max-pages 10 --format html
+venv\Scripts\python.exe audit_cli.py scan --url https://example.com --max-pages 10 --format html
 
 # View the generated HTML report in ./reports/
 ```
@@ -158,20 +165,19 @@ See [QUICKSTART.md](QUICKSTART.md) for detailed setup instructions.
 
 ```bash
 # Basic audit (5 pages)
-python audit_cli.py scan --url https://mysite.com --max-pages 5
+venv\Scripts\python.exe audit_cli.py scan --url https://mysite.com --max-pages 5
 
 # Deep audit (100 pages)
-python audit_cli.py scan --url https://mysite.com --max-pages 100
+venv\Scripts\python.exe audit_cli.py scan --url https://mysite.com --max-pages 100
 
 # Generate both HTML and PDF reports
-python audit_cli.py scan --url https://mysite.com --max-pages 20 --format both
+venv\Scripts\python.exe audit_cli.py scan --url https://mysite.com --max-pages 20 --format both
 
 # Quick homepage check
-python audit_cli.py scan --url https://mysite.com --max-pages 1
+venv\Scripts\python.exe audit_cli.py scan --url https://mysite.com --max-pages 1
 
-# View previous audits (coming soon)
-python audit_cli.py list
-python audit_cli.py view --audit-id <audit-id>
+# View previous audit
+venv\Scripts\python.exe audit_cli.py view --audit-id <audit-id>
 ```
 
 ### Python API
@@ -371,12 +377,8 @@ MIT License - See LICENSE
 
 ## Author
 
-Built by [Your Name] to demonstrate data engineering, web scraping, and analytics expertise.
-
-**Portfolio**: [your-site]
-**LinkedIn**: [your-linkedin]
-**Contact**: audit-demo requests welcome!
+Built to demonstrate data engineering, web scraping, and analytics expertise.
 
 ---
 
-This tool has audited **[X]** websites, detected **[Y]** critical issues, and helped improve analytics implementation for dozens of companies.
+Professional-grade analytics auditing platform for ensuring proper implementation of web analytics tools.
