@@ -3,39 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics Audit Report - {{ audit.site_url }}</title>
+    <title>Analytics Audit Report - {{ audit.site_url }} | JY Insights, LLC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px 0; }
-        .score-card { border-left: 4px solid #667eea; }
+        :root {
+            --jy-blue: #4A90E2;
+            --jy-dark-blue: #2C5F8D;
+            --jy-light-blue: #E8F4F8;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--jy-blue) 0%, var(--jy-dark-blue) 100%);
+            color: white;
+            padding: 30px 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .logo-container {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .logo {
+            height: 40px;
+        }
+        .score-card {
+            border-left: 4px solid var(--jy-blue);
+            transition: transform 0.2s;
+        }
+        .score-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
         .issue-critical { border-left: 4px solid #dc3545; }
         .issue-warning { border-left: 4px solid #ffc107; }
         .issue-info { border-left: 4px solid #0dcaf0; }
-        .coverage-bar { height: 30px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
-        .coverage-fill { height: 100%; background: #28a745; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
-        @media print { .no-print { display: none; } }
+        .coverage-bar {
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .coverage-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            transition: width 0.5s ease;
+        }
+        .page-card {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            transition: all 0.2s;
+        }
+        .page-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .page-card-header {
+            background: var(--jy-light-blue);
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+        }
+        .page-card-body {
+            padding: 20px;
+            display: none;
+        }
+        .page-card-body.show {
+            display: block;
+        }
+        .tag-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin: 3px;
+            font-weight: 500;
+        }
+        .tag-ga4 { background: #4285f4; color: white; }
+        .tag-gtm { background: #ff6d00; color: white; }
+        .tag-consent { background: #6f42c1; color: white; }
+        .tag-fb { background: #1877f2; color: white; }
+        .tag-other { background: #6c757d; color: white; }
+        .datalayer-event {
+            background: #f8f9fa;
+            border-left: 3px solid var(--jy-blue);
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .event-name {
+            font-weight: bold;
+            color: var(--jy-dark-blue);
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            max-height: 400px;
+        }
+        .metric-box {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--jy-blue);
+        }
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .section-title {
+            color: var(--jy-dark-blue);
+            border-bottom: 3px solid var(--jy-blue);
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+        .footer {
+            background: var(--jy-dark-blue);
+            color: white;
+            padding: 30px 0;
+            margin-top: 50px;
+        }
+        @media print {
+            .no-print { display: none; }
+            .page-card-body { display: block !important; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="container">
+            <div class="logo-container">
+                <img src="jy-insights-primary.png" class="logo" alt="JY Insights, LLC">
+            </div>
             <h1>Analytics Audit Report</h1>
-            <p class="lead">{{ audit.site_url }}</p>
-            <p class="mb-0">Generated: {{ generated_at }}</p>
+            <p class="lead"><i class="fas fa-globe"></i> {{ audit.site_url }}</p>
+            <p class="mb-0"><i class="fas fa-calendar"></i> Generated: {{ generated_at }}</p>
         </div>
     </div>
 
     <div class="container my-5">
         <!-- Executive Summary -->
         <section class="mb-5">
-            <h2 class="mb-4">Executive Summary</h2>
+            <h2 class="section-title"><i class="fas fa-chart-line"></i> Executive Summary</h2>
             <div class="row g-4">
                 <div class="col-md-3">
                     <div class="card score-card">
                         <div class="card-body text-center">
                             <h6 class="text-muted mb-2">Overall Score</h6>
-                            <h2 class="mb-0">{{ audit.overall_score|round|int }}/100</h2>
+                            <h2 class="mb-0" style="color: {% if audit.overall_score >= 80 %}#28a745{% elif audit.overall_score >= 60 %}#ffc107{% else %}#dc3545{% endif %}">
+                                {{ audit.overall_score|round|int }}/100
+                            </h2>
                         </div>
                     </div>
                 </div>
@@ -66,14 +206,64 @@
             </div>
         </section>
 
+        <!-- Tags Detected Overview -->
+        {% if audit.ga4_measurement_ids or audit.gtm_container_ids or audit.adobe_launch_properties %}
+        <section class="mb-5">
+            <h2 class="section-title"><i class="fas fa-tags"></i> Analytics Tags Detected</h2>
+            <div class="row">
+                {% if audit.ga4_measurement_ids %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fab fa-google"></i> Google Analytics 4</h5>
+                            <p class="text-muted mb-2">Measurement IDs Found:</p>
+                            {% for ga4_id in audit.ga4_measurement_ids %}
+                            <span class="tag-badge tag-ga4"><i class="fas fa-chart-bar"></i> {{ ga4_id }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if audit.gtm_container_ids %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fas fa-cube"></i> Google Tag Manager</h5>
+                            <p class="text-muted mb-2">Container IDs Found:</p>
+                            {% for gtm_id in audit.gtm_container_ids %}
+                            <span class="tag-badge tag-gtm"><i class="fas fa-layer-group"></i> {{ gtm_id }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if audit.adobe_launch_properties %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5><i class="fab fa-adobe"></i> Adobe Launch</h5>
+                            <p class="text-muted mb-2">Properties Found:</p>
+                            {% for adobe_prop in audit.adobe_launch_properties %}
+                            <span class="tag-badge tag-other"><i class="fas fa-rocket"></i> {{ adobe_prop }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        {% endif %}
+
         <!-- Score Breakdown -->
         <section class="mb-5">
-            <h2 class="mb-4">Score Breakdown</h2>
+            <h2 class="section-title"><i class="fas fa-tachometer-alt"></i> Score Breakdown</h2>
             <div class="row g-3">
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h6>Implementation Quality</h6>
+                            <h6><i class="fas fa-code"></i> Implementation Quality</h6>
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-primary" role="progressbar"
                                      style="width: {{ audit.implementation_score }}%">
@@ -87,7 +277,7 @@
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h6>Privacy Compliance</h6>
+                            <h6><i class="fas fa-shield-alt"></i> Privacy Compliance</h6>
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-success" role="progressbar"
                                      style="width: {{ audit.compliance_score }}%">
@@ -101,7 +291,7 @@
                 <div class="col-md-4">
                     <div class="card">
                         <div class="card-body">
-                            <h6>Performance</h6>
+                            <h6><i class="fas fa-bolt"></i> Performance</h6>
                             <div class="progress" style="height: 25px;">
                                 <div class="progress-bar bg-info" role="progressbar"
                                      style="width: {{ audit.performance_score }}%">
@@ -117,12 +307,12 @@
 
         <!-- Tag Coverage -->
         <section class="mb-5">
-            <h2 class="mb-4">Tag Coverage</h2>
+            <h2 class="section-title"><i class="fas fa-percentage"></i> Tag Coverage</h2>
             <div class="card">
                 <div class="card-body">
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-2">
-                            <span><strong>Google Analytics 4 (GA4)</strong></span>
+                            <span><strong><i class="fab fa-google text-primary"></i> Google Analytics 4 (GA4)</strong></span>
                             <span>{{ audit.tag_coverage.ga4|round|int }}%</span>
                         </div>
                         <div class="coverage-bar">
@@ -134,11 +324,11 @@
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-2">
-                            <span><strong>Google Tag Manager (GTM)</strong></span>
+                            <span><strong><i class="fas fa-cube text-warning"></i> Google Tag Manager (GTM)</strong></span>
                             <span>{{ audit.tag_coverage.gtm|round|int }}%</span>
                         </div>
                         <div class="coverage-bar">
-                            <div class="coverage-fill" style="width: {{ audit.tag_coverage.gtm }}%">
+                            <div class="coverage-fill" style="width: {{ audit.tag_coverage.gtm }}%; background: linear-gradient(90deg, #ff6d00 0%, #f57c00 100%);">
                                 {% if audit.tag_coverage.gtm > 10 %}{{ audit.tag_coverage.gtm|round|int }}%{% endif %}
                             </div>
                         </div>
@@ -146,25 +336,181 @@
 
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-2">
-                            <span><strong>Consent Banner</strong></span>
+                            <span><strong><i class="fas fa-cookie-bite text-purple"></i> Consent Banner</strong></span>
                             <span>{{ audit.tag_coverage.consent|round|int }}%</span>
                         </div>
                         <div class="coverage-bar">
-                            <div class="coverage-fill" style="width: {{ audit.tag_coverage.consent }}%; background: #6f42c1;">
+                            <div class="coverage-fill" style="width: {{ audit.tag_coverage.consent }}%; background: linear-gradient(90deg, #6f42c1 0%, #9b59b6 100%);">
                                 {% if audit.tag_coverage.consent > 10 %}{{ audit.tag_coverage.consent|round|int }}%{% endif %}
                             </div>
                         </div>
                     </div>
+
+                    {% if audit.tag_coverage.adobe_launch > 0 %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span><strong><i class="fab fa-adobe" style="color: #FF0000;"></i> Adobe Launch</strong></span>
+                            <span>{{ audit.tag_coverage.adobe_launch|round|int }}%</span>
+                        </div>
+                        <div class="coverage-bar">
+                            <div class="coverage-fill" style="width: {{ audit.tag_coverage.adobe_launch }}%; background: linear-gradient(90deg, #FF0000 0%, #CC0000 100%);">
+                                {% if audit.tag_coverage.adobe_launch > 10 %}{{ audit.tag_coverage.adobe_launch|round|int }}%{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
 
+        <!-- Page-by-Page Analysis -->
+        <section class="mb-5">
+            <h2 class="section-title"><i class="fas fa-file-alt"></i> Page-by-Page Analysis</h2>
+            <p class="text-muted mb-4">Click on any page to view detailed tag and dataLayer information</p>
+
+            {% for page in audit.pages %}
+            <div class="page-card">
+                <div class="page-card-header" onclick="togglePage('page-{{ loop.index }}')">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="fas fa-link"></i> {{ page.title or 'Untitled Page' }}</strong>
+                            <br>
+                            <small class="text-muted">{{ page.url }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-secondary">{{ page.page_type }}</span>
+                            {% if page.has_ga4 %}<i class="fas fa-check-circle text-success" title="GA4 Detected"></i>{% endif %}
+                            {% if page.has_gtm %}<i class="fas fa-cube text-warning" title="GTM Detected"></i>{% endif %}
+                            {% if page.has_adobe_launch %}<i class="fab fa-adobe text-danger" title="Adobe Launch Detected"></i>{% endif %}
+                            {% if page.has_datalayer %}<i class="fas fa-database text-info" title="dataLayer Present"></i>{% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="page-card-body" id="page-{{ loop.index }}">
+                    <div class="row">
+                        <!-- Tags Detected -->
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-tags"></i> Tags Detected</h6>
+                            <div class="mb-2">
+                                {% if page.has_ga4 %}
+                                    {% for ga4_id in page.ga4_measurement_ids %}
+                                    <span class="tag-badge tag-ga4"><i class="fab fa-google"></i> GA4: {{ ga4_id }}</span>
+                                    {% endfor %}
+                                {% endif %}
+
+                                {% if page.has_gtm %}
+                                    {% for gtm_id in page.gtm_container_ids %}
+                                    <span class="tag-badge tag-gtm"><i class="fas fa-cube"></i> GTM: {{ gtm_id }}</span>
+                                    {% endfor %}
+                                {% endif %}
+
+                                {% if page.has_consent_banner %}
+                                    <span class="tag-badge tag-consent"><i class="fas fa-cookie-bite"></i> {{ page.consent_platform or 'Consent Banner' }}</span>
+                                {% endif %}
+
+                                {% if page.has_facebook_pixel %}
+                                    {% if page.facebook_pixel_ids %}
+                                        {% for fb_id in page.facebook_pixel_ids %}
+                                        <span class="tag-badge tag-fb"><i class="fab fa-facebook"></i> FB Pixel: {{ fb_id }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="tag-badge tag-fb"><i class="fab fa-facebook"></i> Facebook Pixel</span>
+                                    {% endif %}
+                                {% endif %}
+
+                                {% if page.has_linkedin_insight %}
+                                    <span class="tag-badge tag-other"><i class="fab fa-linkedin"></i> LinkedIn Insight</span>
+                                {% endif %}
+
+                                {% if page.has_hotjar %}
+                                    <span class="tag-badge tag-other"><i class="fas fa-thermometer-half"></i> Hotjar</span>
+                                {% endif %}
+
+                                {% if page.has_google_ads %}
+                                    <span class="tag-badge tag-other"><i class="fab fa-google"></i> Google Ads</span>
+                                {% endif %}
+
+                                {% if page.has_adobe_launch %}
+                                    <span class="tag-badge tag-other" style="background: #FF0000;"><i class="fab fa-adobe"></i> Adobe Launch: {{ page.adobe_launch_property }}</span>
+                                {% endif %}
+
+                                {% if not page.has_ga4 and not page.has_gtm and not page.has_consent_banner and not page.has_facebook_pixel and not page.has_linkedin_insight and not page.has_hotjar and not page.has_google_ads and not page.has_adobe_launch %}
+                                    <span class="text-muted"><i class="fas fa-exclamation-triangle"></i> No analytics tags detected</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Page Metrics -->
+                        <div class="col-md-6 mb-3">
+                            <h6><i class="fas fa-chart-bar"></i> Page Metrics</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><i class="fas fa-clock"></i> Load Time:</td>
+                                    <td><strong>{{ "%.2f"|format(page.load_time_seconds) }}s</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-code"></i> Total Scripts:</td>
+                                    <td><strong>{{ page.total_scripts or 0 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-chart-line"></i> Tracking Scripts:</td>
+                                    <td><strong>{{ page.tracking_scripts or 0 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-database"></i> dataLayer:</td>
+                                    <td>
+                                        {% if page.has_datalayer %}
+                                            <span class="badge bg-success">Present</span>
+                                            {% if page.datalayer_defined_before_gtm %}
+                                                <i class="fas fa-check-circle text-success" title="Correctly defined before GTM"></i>
+                                            {% elif page.datalayer_defined_before_gtm == False %}
+                                                <i class="fas fa-exclamation-triangle text-warning" title="Defined after GTM"></i>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="badge bg-secondary">Not Found</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- DataLayer Events -->
+                    {% if page.datalayer_events and page.datalayer_events|length > 0 %}
+                    <div class="mt-3">
+                        <h6><i class="fas fa-stream"></i> DataLayer Events ({{ page.datalayer_events|length }})</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted small">Event Summary:</h6>
+                                {% for event in page.datalayer_events %}
+                                    {% if event is mapping and 'event' in event %}
+                                    <div class="datalayer-event">
+                                        <span class="event-name">{{ loop.index }}. {{ event.event }}</span>
+                                        {% if event.event in ['purchase', 'add_to_cart', 'begin_checkout', 'view_item'] %}
+                                            <i class="fas fa-shopping-cart text-success" title="E-commerce event"></i>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted small">Full DataLayer Data:</h6>
+                                <pre><code>{{ page.datalayer_events|tojson(indent=2) }}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+
         <!-- Issues Found -->
         <section class="mb-5">
-            <h2 class="mb-4">Issues & Recommendations</h2>
+            <h2 class="section-title"><i class="fas fa-exclamation-circle"></i> Issues & Recommendations</h2>
 
             {% if audit.critical_issues > 0 %}
-            <h5 class="text-danger mt-4">Critical Issues</h5>
+            <h5 class="text-danger mt-4"><i class="fas fa-times-circle"></i> Critical Issues</h5>
             {% for issue in audit.issues %}
             {% if issue.severity == 'critical' %}
             <div class="card mb-3 issue-critical">
@@ -173,10 +519,14 @@
                         <span class="badge bg-danger me-2">CRITICAL</span>
                         {{ issue.title }}
                     </h6>
+                    {% if issue.description != issue.title %}
                     <p class="mb-2">{{ issue.description or issue.title }}</p>
+                    {% endif %}
+                    {% if issue.recommendation %}
                     <div class="alert alert-light mb-0">
-                        <strong>💡 Recommendation:</strong> {{ issue.recommendation }}
+                        <strong><i class="fas fa-lightbulb"></i> Recommendation:</strong> {{ issue.recommendation }}
                     </div>
+                    {% endif %}
                 </div>
             </div>
             {% endif %}
@@ -184,7 +534,7 @@
             {% endif %}
 
             {% if audit.warning_issues > 0 %}
-            <h5 class="text-warning mt-4">Warnings</h5>
+            <h5 class="text-warning mt-4"><i class="fas fa-exclamation-triangle"></i> Warnings</h5>
             {% for issue in audit.issues %}
             {% if issue.severity == 'warning' %}
             <div class="card mb-3 issue-warning">
@@ -193,12 +543,12 @@
                         <span class="badge bg-warning text-dark me-2">WARNING</span>
                         {{ issue.title }}
                     </h6>
-                    {% if issue.description != issue.title %}
+                    {% if issue.description and issue.description != issue.title %}
                     <p class="mb-2">{{ issue.description }}</p>
                     {% endif %}
                     {% if issue.recommendation %}
                     <div class="alert alert-light mb-0">
-                        <strong>💡 Recommendation:</strong> {{ issue.recommendation }}
+                        <strong><i class="fas fa-lightbulb"></i> Recommendation:</strong> {{ issue.recommendation }}
                     </div>
                     {% endif %}
                 </div>
@@ -208,7 +558,7 @@
             {% endif %}
 
             {% if audit.info_issues > 0 %}
-            <h5 class="text-info mt-4">Informational</h5>
+            <h5 class="text-info mt-4"><i class="fas fa-info-circle"></i> Informational</h5>
             {% for issue in audit.issues %}
             {% if issue.severity == 'info' %}
             <div class="card mb-3 issue-info">
@@ -218,7 +568,7 @@
                         {{ issue.title }}
                     </h6>
                     {% if issue.recommendation %}
-                    <p class="mb-0"><strong>Note:</strong> {{ issue.recommendation }}</p>
+                    <p class="mb-0"><strong><i class="fas fa-info"></i> Note:</strong> {{ issue.recommendation }}</p>
                     {% endif %}
                 </div>
             </div>
@@ -228,19 +578,19 @@
 
             {% if audit.critical_issues == 0 and audit.warning_issues == 0 and audit.info_issues == 0 %}
             <div class="alert alert-success">
-                <strong>✓ No issues detected!</strong> Your analytics implementation looks great.
+                <strong><i class="fas fa-check-circle"></i> No issues detected!</strong> Your analytics implementation looks great.
             </div>
             {% endif %}
         </section>
 
         <!-- Next Steps -->
         <section class="mb-5">
-            <h2 class="mb-4">Recommended Next Steps</h2>
+            <h2 class="section-title"><i class="fas fa-tasks"></i> Recommended Next Steps</h2>
             <div class="card">
                 <div class="card-body">
                     <ol>
                         {% if audit.critical_issues > 0 %}
-                        <li><strong>Address critical issues immediately</strong> - these affect data quality</li>
+                        <li><strong>Address critical issues immediately</strong> - these affect data quality and compliance</li>
                         {% endif %}
                         {% if audit.tag_coverage.ga4 < 100 %}
                         <li>Ensure GA4 is on 100% of pages for complete data collection</li>
@@ -257,13 +607,34 @@
                 </div>
             </div>
         </section>
-
-        <!-- Footer -->
-        <footer class="text-center text-muted mt-5 pt-4 border-top no-print">
-            <p>Generated by Analytics Audit Engine | <a href="https://github.com/yourusername/analytics-audit-engine">GitHub</a></p>
-        </footer>
     </div>
 
+    <!-- Footer -->
+    <footer class="footer no-print">
+        <div class="container text-center">
+            <div class="mb-3">
+                <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAyAAAAEsCAYAAAA7Ldc6AAAACXBIWXMAAAsTAAALEwEAmpwYAAAF8GlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgOS4xLWMwMDEgNzkuMTQ2Mjg5OSwgMjAyMy8wNi8yNS0yMDowMTo1NSAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iIHhtbG5zOnBob3Rvc2hvcD0iaHR0cDovL25zLmFkb2JlLmNvbS9waG90b3Nob3AvMS4wLyIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0RXZ0PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VFdmVudCMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIDI1LjEgKFdpbmRvd3MpIiB4bXA6Q3JlYXRlRGF0ZT0iMjAyNS0xMi0zMVQwNDowMjowNS0wNTowMCIgeG1wOk1vZGlmeURhdGU9IjIwMjUtMTItMzFUMDQ6MDI6MzQtMDU6MDAiIHhtcDpNZXRhZGF0YURhdGU9IjIwMjUtMTItMzFUMDQ6MDI6MzQtMDU6MDAiIGRjOmZvcm1hdD0iaW1hZ2UvcG5nIiBwaG90b3Nob3A6Q29sb3JNb2RlPSIzIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOmE4YTg2YzdjLTE1ZDItNGQ0Yy05YzFkLTA3ODhjNWYwNGU0NSIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDphOGE4NmM3Yy0xNWQyLTRkNGMtOWMxZC0wNzg4YzVmMDRlNDUiIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDphOGE4NmM3Yy0xNWQyLTRkNGMtOWMxZC0wNzg4YzVmMDRlNDUiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOmE4YTg2YzdjLTE1ZDItNGQ0Yy05YzFkLTA3ODhjNWYwNGU0NSIgc3RFdnQ6d2hlbj0iMjAyNS0xMi0zMVQwNDowMjowNS0wNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI1LjEgKFdpbmRvd3MpIi8+IDwvcmRmOlNlcT4gPC94bXBNTTpIaXN0b3J5PiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PnVjKpUAABrWSURBVHic7d1NjBzXfcfx35vZWa5MWSRTWbQlmSBh+SWxJcgOogCOHQgCkgCOHQRwDrnkkgB5yS2XALnkoIOBHL" style="height: 50px; filter: brightness(0) invert(1);" alt="JY Insights, LLC">
+            </div>
+            <h5>JY Insights, LLC</h5>
+            <p class="mb-2">Professional Analytics Auditing & Implementation</p>
+            <p class="mb-0">
+                <i class="fas fa-envelope"></i> <a href="mailto:justin@jyinsights.com" class="text-white">justin@jyinsights.com</a> |
+                <i class="fas fa-phone"></i> Available for Consulting
+            </p>
+            <hr class="my-3" style="opacity: 0.3">
+            <p class="small mb-0">
+                © 2025 JY Insights, LLC. All rights reserved. |
+                <a href="#" class="text-white">Schedule a Consultation</a>
+            </p>
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function togglePage(pageId) {
+            const element = document.getElementById(pageId);
+            element.classList.toggle('show');
+        }
+    </script>
 </body>
 </html>

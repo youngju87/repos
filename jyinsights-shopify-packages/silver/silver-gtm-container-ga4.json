@@ -1,13 +1,13 @@
 {
   "exportFormatVersion": 2,
-  "exportTime": "2024-12-04 00:00:00",
+  "exportTime": "2026-01-06 18:00:00",
   "containerVersion": {
     "path": "accounts/XXXXXX/containers/XXXXXX/versions/1",
     "accountId": "XXXXXX",
     "containerId": "XXXXXX",
     "containerVersionId": "1",
-    "name": "JY/co Gold Package v1.0",
-    "description": "Complete GA4 ecommerce tracking for Shopify - JY/co Gold Package",
+    "name": "JY Insights Silver Package GA4 - v1.0",
+    "description": "Complete GA4 ecommerce tracking for Shopify - Single custom pixel implementation (no theme editing required). Includes all storefront and checkout events with GTM integration.",
     "container": {
       "path": "accounts/XXXXXX/containers/XXXXXX",
       "accountId": "XXXXXX",
@@ -1117,7 +1117,7 @@
           {
             "type": "TEMPLATE",
             "key": "html",
-            "value": "<script>\n  // JY/co Pixel Bridge - Listen for postMessage from Custom Pixel\n  window.addEventListener('message', function(e) {\n    if (e.data && e.data.type === 'jyco_datalayer') {\n      window.dataLayer = window.dataLayer || [];\n      window.dataLayer.push(e.data.payload);\n      console.log('[JY/co Pixel Bridge] Event received:', e.data.payload.event);\n    }\n    \n    if (e.data && e.data.type === 'jyco_pixel_ready') {\n      console.log('[JY/co Pixel Bridge] Custom Pixel ready, version:', e.data.version);\n    }\n  });\n</script>"
+            "value": "<script>\n  // jyinsights Pixel Bridge - Listen for postMessage from Custom Pixel\n  window.addEventListener('message', function(e) {\n    if (e.data && e.data.type === 'jyco_datalayer') {\n      window.dataLayer = window.dataLayer || [];\n      window.dataLayer.push(e.data.payload);\n      console.log('[jyinsights Pixel Bridge] Event received:', e.data.payload.event);\n    }\n    \n    if (e.data && e.data.type === 'jyco_pixel_ready') {\n      console.log('[jyinsights Pixel Bridge] Custom Pixel ready, version:', e.data.version);\n    }\n  });\n</script>"
           },
           {
             "type": "BOOLEAN",

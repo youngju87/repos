@@ -11,7 +11,17 @@
       "Bash(del analytics_audit.db)",
       "Bash(timeout 120 venv/Scripts/python.exe:*)",
       "Bash(ls:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(findstr:*)",
+      "Bash(du:*)",
+      "Bash(copy:*)",
+      "Bash(\"venv\\\\Scripts\\\\python.exe\" init_db.py)",
+      "Bash(timeout 120 \"venv\\\\Scripts\\\\python.exe\":*)",
+      "Bash(grep:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(cp:*)"
     ],
     "deny": [],
     "ask": []

@@ -92,6 +92,8 @@ class Page(Base):
     has_linkedin_insight = Column(Boolean, default=False)
     has_hotjar = Column(Boolean, default=False)
     has_google_ads = Column(Boolean, default=False)
+    has_adobe_launch = Column(Boolean, default=False)
+    adobe_launch_property = Column(String(255))
 
     # Consent & Privacy
     has_consent_banner = Column(Boolean, default=False)

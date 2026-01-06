@@ -1,0 +1,1485 @@
+{% comment %}
+/**
+ * JY Insights Gold Plus Package - Storefront Data Layer
+ * Full GA4-compliant ecommerce tracking for Shopify storefront
+ * Version: 1.3 (Gold Plus)
+ * Last Updated: 2026-01-06
+ *
+ * Installation: Add to theme.liquid before </head>
+ * Configuration: Update GTM container ID (line 15) with your GTM-XXXXXXX
+ * Documentation: See gold-sdr-document.md
+ * Support: contact@jyinsights.com
+ *
+ * ARCHITECTURE:
+ * - Handles all storefront tracking (product pages, collections, cart, search)
+ * - Pushes GA4-compliant events to window.dataLayer
+ * - GTM loaded directly in parent window
+ * - Checkout tracking handled separately by gold-checkout-pixel-GA4.js
+ * - Maintains consistency with checkout pixel data structure
+ *
+ * TRACKED EVENTS:
+ * - user_data_ready (session context with customer info)
+ * - page_data_ready (page context and navigation info)
+ * - page_view (all storefront pages)
+ * - view_item_list (collections)
+ * - view_item (product detail pages)
+ * - view_cart (cart page + drawer opens)
+ * - add_to_cart (product page + collection quick-add)
+ * - remove_from_cart (cart page + drawer)
+ * - select_item (product clicks from collections/search)
+ * - search (search page)
+ *
+ * CHANGELOG v1.3:
+ * - Added sessionStorage persistence for item list attribution
+ * - List attribution (item_list_id, item_list_name) now persists through to checkout
+ * - Saves list attribution on: select_item, quick view, and collection quick-add
+ * - Quick view add_to_cart now includes list attribution from sessionStorage
+ * - Added context parameter to add_to_cart: 'pdp', 'quick_view', or 'collection_quick_add'
+ * - Search events now include actual search term in item_list_name (e.g., 'Search: team lead')
+ * - Enables revenue attribution by source list in GA4 reports
+ *
+ * CHANGELOG v1.2:
+ * - Added quick view tracking with view_type parameter ('quick_view' vs 'pdp')
+ * - Added quick view button selectors to CONFIG
+ * - Product detail pages now include view_type: 'pdp' parameter
+ * - Quick view clicks fire view_item with view_type: 'quick_view'
+ *
+ * CHANGELOG v1.1:
+ * - Removed duplicate begin_checkout from handleCheckoutClick (now handled by checkout pixel)
+ * - Fixed .map() calls to properly pass item index to formatProductItem
+ * - Updated version numbering to match checkout pixel scheme
+ * - Synced documentation format with checkout pixel
+ */
+{% endcomment %}
+
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-K9JX87Z6');</script>
+<!-- End Google Tag Manager -->
+
+<script type="text/javascript">
+(function() {
+  'use strict';
+
+  // ==========================================================================
+  // INITIALIZATION
+  // ==========================================================================
+
+  // Initialize dataLayer if it doesn't exist
+  window.dataLayer = window.dataLayer || [];
+
+  // Configuration
+  var CONFIG = {
+    debug: true,
+    version: '1.3',
+    googleFeedRegion: 'US',
+
+    // Theme Selectors
+    selectors: {
+      // Cart drawer element
+      cartDrawer: ['cart-drawer', '#CartDrawer', '.cart-drawer', '[data-cart-drawer]'],
+
+      // Add to cart buttons
+      addToCartButton: [
+        'button[name="add"]',
+        'button[type="submit"][form*="product-form"]',
+        '.product-form__submit',
+        'button.product-form__cart-submit'
+      ],
+
+      // Quantity buttons
+      quantityButtons: [
+        'quantity-selector button[name="minus"]',
+        'quantity-selector button[name="plus"]',
+        'button[data-quantity-decrement]',
+        'button[data-quantity-increment]'
+      ],
+
+      // Remove from cart
+      removeButton: [
+        'cart-remove-button',
+        'a[is="cart-remove-item"]',
+        '.cart-item__remove',
+        'button[data-remove]',
+        '.cart__remove',
+        'a[href*="/cart/change?line="]',
+        'a[href*="/cart/change"]',
+        '[data-cart-item-remove]',
+        '.remove',
+        'button.remove',
+        'a.remove'
+      ],
+
+      // Checkout button
+      checkoutButton: [
+        'button[name="checkout"]',
+        'a[href="/checkout"]',
+        'button[type="submit"][form*="cart"]'
+      ],
+
+      // Product links
+      productLink: 'a[href*="/products/"]',
+
+      // Quick view buttons
+      quickViewButton: [
+        'button[aria-controls^="QuickView-"]',
+        'button[aria-haspopup="dialog"].product-card__action-button',
+        '.product-card__atc[aria-controls^="QuickView-"]',
+        '[data-quick-view]'
+      ]
+    }
+  };
+
+  // ==========================================================================
+  // LOGGING
+  // ==========================================================================
+
+  function log(message, data) {
+    if (CONFIG.debug) {
+      console.log('[JY Gold Plus]', message, data || '');
+    }
+  }
+
+  // ==========================================================================
+  // HELPER FUNCTIONS
+  // ==========================================================================
+
+  /**
+   * Safely parse numeric values
+   */
+  function parsePrice(value) {
+    var num = parseFloat(value);
+    return isNaN(num) ? 0 : Number(num.toFixed(2));
+  }
+
+  /**
+   * Generate Google Ads product ID format
+   */
+  function generateGoogleProductId(productId, variantId) {
+    return 'shopify_' + CONFIG.googleFeedRegion + '_' + productId + '_' + variantId;
+  }
+
+  /**
+   * Format product item for GA4 ecommerce
+   * Returns GA4-compliant item object
+   */
+  function formatProductItem(item, index) {
+    var itemData = {
+      item_id: String(item.variant_id || item.id || ''),
+      item_name: item.product_title || item.title || '',
+      currency: page_data.currency,
+      index: index
+    };
+
+    // Optional fields
+    if (item.product_id) itemData.product_id = String(item.product_id);
+    if (item.variant_id) itemData.variant_id = String(item.variant_id);
+    if (item.vendor) itemData.item_brand = item.vendor;
+    if (item.product_type) itemData.item_category = item.product_type;
+    if (item.variant_title) itemData.item_variant = item.variant_title;
+    if (item.sku) itemData.sku = item.sku;
+
+    // Price
+    if (item.final_price !== undefined) {
+      itemData.price = parsePrice(item.final_price / 100);
+    } else if (item.price !== undefined) {
+      itemData.price = parsePrice(item.price / 100);
+    }
+
+    // Quantity
+    if (item.quantity) itemData.quantity = item.quantity;
+
+    // Google Ads ID
+    if (item.product_id && item.variant_id) {
+      itemData.g_product_id = generateGoogleProductId(item.product_id, item.variant_id);
+    }
+
+    return itemData;
+  }
+
+  /**
+   * Check if sessionStorage is available
+   */
+  function isSessionStorageAvailable() {
+    try {
+      var test = '__jy_test__';
+      sessionStorage.setItem(test, test);
+      sessionStorage.removeItem(test);
+      return true;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  /**
+   * Save item list attribution to sessionStorage
+   * Stores mapping of variant_id -> {item_list_id, item_list_name}
+   */
+  function saveListAttribution(variantId, listId, listName) {
+    if (!variantId || !isSessionStorageAvailable()) return;
+
+    try {
+      var attribution = JSON.parse(sessionStorage.getItem('jy_list_attribution') || '{}');
+      attribution[String(variantId)] = {
+        item_list_id: String(listId),
+        item_list_name: String(listName),
+        timestamp: Date.now()
+      };
+      sessionStorage.setItem('jy_list_attribution', JSON.stringify(attribution));
+      log('List attribution saved', { variantId: variantId, listId: listId, listName: listName });
+    } catch(e) {
+      log('Error saving list attribution', e);
+    }
+  }
+
+  /**
+   * Find element in event path using configured selectors
+   */
+  function findElementInPath(path, selectorArray) {
+    if (!path) return null;
+
+    for (var i = 0; i < path.length; i++) {
+      var element = path[i];
+      if (!element.matches) continue;
+
+      for (var j = 0; j < selectorArray.length; j++) {
+        try {
+          if (element.matches(selectorArray[j])) {
+            return element;
+          }
+        } catch(e) {
+          // Invalid selector, continue
+        }
+      }
+    }
+    return null;
+  }
+
+  // ==========================================================================
+  // USER DATA OBJECT - Privacy-Compliant User Information
+  // ==========================================================================
+  // This object persists across the session and contains hashed/privacy-safe user info
+  // Suitable for marketing platforms (Meta CAPI, Google Enhanced Conversions, etc.)
+
+  var user_data = {
+    {% if customer %}
+    // Hashed identifiers (privacy-safe)
+    email_sha256: '{{ customer.email | sha256 }}',
+
+    // User status
+    user_id: '{{ customer.id }}',
+    logged_in: true,
+    customer_type: {{ customer.orders_count | default: 0 }} > 0 ? 'returning' : 'new',
+
+    // Behavioral metrics
+    orders_count: {{ customer.orders_count | default: 0 }},
+    lifetime_value: parsePrice({{ customer.total_spent | money_without_currency | remove: ',' | default: 0 }}),
+
+    // Optional: Phone hash if available
+    {% if customer.phone %}
+    phone_sha256: '{{ customer.phone | sha256 }}',
+    {% endif %}
+
+    // Optional: Address data hashes (for enhanced matching)
+    {% if customer.default_address %}
+    {% if customer.default_address.city %}
+    city: '{{ customer.default_address.city | downcase }}',
+    {% endif %}
+    {% if customer.default_address.province_code %}
+    state: '{{ customer.default_address.province_code | upcase }}',
+    {% endif %}
+    {% if customer.default_address.country_code %}
+    country: '{{ customer.default_address.country_code | upcase }}',
+    {% endif %}
+    {% if customer.default_address.zip %}
+    zip: '{{ customer.default_address.zip }}',
+    {% endif %}
+    {% endif %}
+
+    // First/last name initials only (privacy-safe)
+    {% if customer.first_name %}
+    first_name_initial: '{{ customer.first_name | slice: 0 | downcase }}',
+    {% endif %}
+    {% if customer.last_name %}
+    last_name_initial: '{{ customer.last_name | slice: 0 | downcase }}',
+    {% endif %}
+    {% else %}
+    // Guest user
+    logged_in: false,
+    customer_type: 'guest'
+    {% endif %}
+  };
+
+  // ==========================================================================
+  // PAGE DATA OBJECT - Navigation & Page Context
+  // ==========================================================================
+  // This object persists across the session and contains page/navigation info
+
+  {% assign template_name = template.name %}
+  var page_data = {
+    // Page identification
+    page_location: window.location.href,
+    page_path: window.location.pathname,
+    page_title: document.title,
+    page_type: '{{ template_name }}',
+
+    // Referral information
+    page_referrer: document.referrer || '(direct)',
+
+    // Site context
+    language: '{{ shop.locale }}',
+    currency: '{{ cart.currency.iso_code }}',
+
+    // Template-specific context
+    {% if template_name == 'collection' %}
+    collection_id: '{{ collection.id }}',
+    collection_handle: '{{ collection.handle }}',
+    collection_title: {{ collection.title | json }},
+    {% elsif template_name == 'product' %}
+    product_id: '{{ product.id }}',
+    product_handle: '{{ product.handle }}',
+    product_type: {{ product.type | json }},
+    {% elsif template_name == 'search' %}
+    search_term: {{ search.terms | json }},
+    {% endif %}
+
+    // Navigation tracking
+    navigation_type: window.performance && window.performance.navigation ?
+      window.performance.navigation.type : 0
+  };
+
+  // Push persistent data objects to dataLayer for session-wide access
+  window.dataLayer.push({
+    event: 'user_data_ready',
+    user_data: user_data
+  });
+
+  window.dataLayer.push({
+    event: 'page_data_ready',
+    page_data: page_data
+  });
+
+  log('User & Page data initialized', {
+    customer_type: user_data.customer_type,
+    page_type: page_data.page_type
+  });
+
+  // ==========================================================================
+  // PAGE VIEW EVENT - Simple & Consistent
+  // ==========================================================================
+  // Simplified page_view event indicating context (storefront vs checkout)
+
+  window.dataLayer.push({
+    event: 'page_view',
+    context: 'storefront', // This file only handles storefront; checkout uses separate pixel
+    page_type: page_data.page_type,
+    page_title: page_data.page_title,
+    user_logged_in: user_data.logged_in
+  });
+
+  log('page_view pushed', { context: 'storefront', page_type: page_data.page_type });
+
+  // ==========================================================================
+  // PAGE-SPECIFIC EVENTS
+  // ==========================================================================
+
+  {% case template_name %}
+
+  {% when 'collection' %}
+  // VIEW_ITEM_LIST event (GA4 standard for collection views)
+  (function() {
+    var items = [];
+    {% for product in collection.products limit: 50 %}
+    items.push({
+      item_id: '{{ product.selected_or_first_available_variant.id }}',
+      item_name: {{ product.title | json }},
+      item_brand: {{ product.vendor | json }},
+      item_category: {{ product.type | json }},
+      price: {{ product.variants.first.price | times: 0.01 }},
+      currency: page_data.currency,
+      product_id: '{{ product.id }}',
+      variant_id: '{{ product.selected_or_first_available_variant.id }}',
+      g_product_id: generateGoogleProductId('{{ product.id }}', '{{ product.selected_or_first_available_variant.id }}'),
+      index: {{ forloop.index0 }}
+    });
+    {% endfor %}
+
+    window.dataLayer.push({
+      event: 'view_item_list',
+      ecommerce: {
+        item_list_id: '{{ collection.id }}',
+        item_list_name: {{ collection.title | json }},
+        items: items
+      }
+    });
+
+    log('view_item_list pushed', { items_count: items.length });
+  })();
+
+  {% when 'search' %}
+  // VIEW_SEARCH_RESULTS event (GA4 standard for search)
+  (function() {
+    var items = [];
+    {% for product in search.results limit: 50 %}
+    {% if product.object_type == 'product' %}
+    items.push({
+      item_id: '{{ product.selected_or_first_available_variant.id }}',
+      item_name: {{ product.title | json }},
+      item_brand: {{ product.vendor | json }},
+      item_category: {{ product.type | json }},
+      price: {{ product.selected_or_first_available_variant.price | times: 0.01 }},
+      currency: page_data.currency,
+      product_id: '{{ product.id }}',
+      variant_id: '{{ product.selected_or_first_available_variant.id }}',
+      g_product_id: generateGoogleProductId('{{ product.id }}', '{{ product.selected_or_first_available_variant.id }}'),
+      sku: '{{ product.selected_or_first_available_variant.sku }}',
+      index: {{ forloop.index0 }}
+    });
+    {% endif %}
+    {% endfor %}
+
+    window.dataLayer.push({
+      event: 'search',
+      search_term: {{ search.terms | json }}
+    });
+
+    if (items.length > 0) {
+      window.dataLayer.push({
+        event: 'view_search_results',
+        search_term: {{ search.terms | json }},
+        ecommerce: {
+          items: items
+        }
+      });
+    }
+
+    log('search events pushed', { term: {{ search.terms | json }}, results: items.length });
+  })();
+
+  {% when 'product' %}
+  // VIEW_ITEM event (GA4 standard for product detail page)
+  (function() {
+    try {
+      var productData = {{ product | json }};
+
+      // Handle different variant selection scenarios
+      var selectedVariant = productData.selected_or_first_available_variant ||
+                           productData.selected_variant ||
+                           (productData.variants && productData.variants[0]);
+
+      if (!selectedVariant) {
+        log('ERROR: No variant found for product', productData);
+        return;
+      }
+
+      window.dataLayer.push({
+        event: 'view_item',
+        view_type: 'pdp', // Product Detail Page (vs 'quick_view')
+        ecommerce: {
+          currency: page_data.currency,
+          value: parsePrice(selectedVariant.price / 100),
+          items: [{
+            item_id: String(selectedVariant.id),
+            item_name: productData.title,
+            item_brand: productData.vendor,
+            item_category: productData.type,
+            item_variant: selectedVariant.title,
+            price: parsePrice(selectedVariant.price / 100),
+            currency: page_data.currency,
+            product_id: String(productData.id),
+            variant_id: String(selectedVariant.id),
+            g_product_id: generateGoogleProductId(productData.id, selectedVariant.id),
+            sku: selectedVariant.sku
+          }]
+        }
+      });
+
+      log('view_item pushed', { product: productData.title, view_type: 'pdp' });
+    } catch (error) {
+      log('ERROR in view_item event:', error);
+    }
+  })();
+
+  {% when 'cart' %}
+  // VIEW_CART event (GA4 standard for cart page)
+  (function() {
+    var items = [];
+    var totalValue = 0;
+
+    {% for item in cart.items %}
+    var itemData = formatProductItem({{ item | json }}, {{ forloop.index0 }});
+    items.push(itemData);
+    totalValue += (itemData.price || 0) * (itemData.quantity || 1);
+    {% endfor %}
+
+    window.dataLayer.push({
+      event: 'view_cart',
+      ecommerce: {
+        currency: page_data.currency,
+        value: parsePrice(totalValue),
+        items: items
+      }
+    });
+
+    log('view_cart pushed', { items_count: items.length });
+  })();
+
+  {% endcase %}
+
+  // ==========================================================================
+  // CLICK EVENT DELEGATION (Event Listeners)
+  // ==========================================================================
+
+  document.addEventListener('click', function(event) {
+    var path = event.path || (event.composedPath && event.composedPath()) || [];
+
+    // Check for quick view button (on collections/search)
+    {% if template.name == 'collection' or template.name == 'search' %}
+    var quickViewBtn = findElementInPath(path, CONFIG.selectors.quickViewButton);
+    if (quickViewBtn) {
+      handleQuickViewClick(quickViewBtn);
+      // Don't return - let the modal open naturally
+    }
+    {% endif %}
+
+    // Check for add to cart button FIRST (before it submits)
+    {% if template.name == 'product' %}
+    var addToCartBtn = findElementInPath(path, CONFIG.selectors.addToCartButton);
+    if (addToCartBtn) {
+      handleAddToCartClick(addToCartBtn, event);
+      // Don't return - let the form submit naturally
+    }
+    {% elsif template.name == 'collection' or template.name == 'search' %}
+    var addToCartBtn = findElementInPath(path, CONFIG.selectors.addToCartButton);
+    if (addToCartBtn) {
+      // Check if it's a quick view modal or collection quick-add
+      var handledByQuickView = handleQuickViewAddToCart(addToCartBtn);
+      if (!handledByQuickView) {
+        // Not quick view, must be collection quick-add
+        handleAddToCartClick(addToCartBtn, event);
+      }
+      // Don't return - let the form submit naturally
+    }
+    {% endif %}
+
+    // Check for checkout button
+    var checkoutBtn = findElementInPath(path, CONFIG.selectors.checkoutButton);
+    if (checkoutBtn) {
+      handleCheckoutClick();
+      return;
+    }
+
+    // Check for remove from cart
+    var removeBtn = findElementInPath(path, CONFIG.selectors.removeButton);
+    if (removeBtn) {
+      // Prevent duplicate processing - only process once per click
+      if (removeBtn._removeProcessed && Date.now() - removeBtn._removeProcessed < 100) {
+        return;
+      }
+      removeBtn._removeProcessed = Date.now();
+
+      log('Remove button clicked', removeBtn);
+      handleRemoveFromCart(removeBtn);
+      return;
+    }
+
+    // Check for product click (collections/search)
+    {% if template.name == 'collection' or template.name == 'search' %}
+    var productLink = findElementInPath(path, [CONFIG.selectors.productLink]);
+    if (productLink && productLink.href && productLink.href.includes('/products/')) {
+      handleProductClick(productLink);
+      return;
+    }
+    {% endif %}
+  });
+
+  // ==========================================================================
+  // CHECKOUT CLICK HANDLER
+  // ==========================================================================
+  // NOTE: begin_checkout event is now handled by gold-checkout-pixel-GA4.js
+  // This function is kept for future extensibility but no longer pushes begin_checkout
+
+  function handleCheckoutClick() {
+    // Checkout tracking is handled by the checkout pixel (gold-checkout-pixel-GA4.js)
+    // which fires begin_checkout when checkout_started event occurs
+    // This prevents duplicate begin_checkout events
+    log('Checkout button clicked - tracking handled by checkout pixel');
+  }
+
+  // ==========================================================================
+  // ADD TO CART CLICK HANDLER - QUICK VIEW (Collection/Search pages)
+  // ==========================================================================
+  // This handler captures add to cart from quick view modals on collection/search pages
+
+  {% if template.name == 'collection' or template.name == 'search' %}
+  // Helper function to fetch product data and push add_to_cart event
+  function fetchAndPushQuickViewAddToCart(productHandle, variantId, quantity, listAttribution) {
+    log('Fetching product by handle:', productHandle);
+
+    // Fetch full product data using the handle
+    fetch('/products/' + productHandle + '.js')
+      .then(function(response) { return response.json(); })
+      .then(function(productData) {
+        var selectedVariant = productData.variants.find(function(v) {
+          return String(v.id) === String(variantId);
+        }) || productData.variants[0];
+
+        var price = parsePrice(selectedVariant.price / 100);
+        var value = parsePrice(price * quantity);
+
+        var item = {
+          item_id: String(selectedVariant.id),
+          item_name: productData.title,
+          item_brand: productData.vendor,
+          item_category: productData.type,
+          item_variant: selectedVariant.title,
+          price: price,
+          quantity: quantity,
+          currency: page_data.currency,
+          product_id: String(productData.id),
+          variant_id: String(selectedVariant.id),
+          g_product_id: generateGoogleProductId(productData.id, selectedVariant.id),
+          sku: selectedVariant.sku,
+          item_list_id: listAttribution.item_list_id,
+          item_list_name: listAttribution.item_list_name
+        };
+
+        window.dataLayer.push({
+          event: 'add_to_cart',
+          context: 'quick_view',
+          ecommerce: {
+            currency: page_data.currency,
+            value: value,
+            items: [item]
+          }
+        });
+
+        log('add_to_cart pushed (quick_view)', {
+          product: productData.title,
+          variant: selectedVariant.title,
+          quantity: quantity,
+          value: value,
+          list: item.item_list_name
+        });
+      })
+      .catch(function(error) {
+        log('Error fetching product data for quick view add to cart', error);
+      });
+  }
+
+  function handleQuickViewAddToCart(button) {
+    log('Add to cart clicked in quick view modal', button);
+
+    // Detect if this is inside a quick view modal
+    var isQuickView = button.id && button.id.includes('quick-view');
+    if (!isQuickView) {
+      log('Not a quick view modal, skipping');
+      return false; // Not a quick view
+    }
+
+    // Find the form
+    var form = button.closest('form[action*="/cart/add"]') || button.form;
+    if (!form) {
+      log('Could not find product form in quick view');
+      return false;
+    }
+
+    // Get variant ID from form
+    var variantInput = form.querySelector('input[name="id"]') || form.querySelector('select[name="id"]');
+    if (!variantInput || !variantInput.value) {
+      log('Could not find variant ID in quick view form');
+      return false;
+    }
+    var variantId = variantInput.value;
+
+    // Get quantity
+    var quantityInput = form.querySelector('input[name="quantity"]');
+    var quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+
+    // Get list attribution from sessionStorage
+    var listAttribution = null;
+    if (isSessionStorageAvailable()) {
+      try {
+        var attribution = JSON.parse(sessionStorage.getItem('jy_list_attribution') || '{}');
+        listAttribution = attribution[String(variantId)];
+      } catch(e) {
+        log('Error reading list attribution', e);
+      }
+    }
+
+    if (!listAttribution) {
+      log('No list attribution found for variant', variantId);
+      return false;
+    }
+
+    // Extract product handle from the product-info element's data-url attribute
+    var productHandle = null;
+    var productInfo = button.closest('product-info') ||
+                      document.querySelector('product-info[data-url]');
+
+    if (productInfo) {
+      try {
+        var productUrl = productInfo.getAttribute('data-url');
+        if (productUrl) {
+          // Extract handle from URL like "/products/20-column-test"
+          var urlParts = productUrl.split('/products/');
+          if (urlParts.length > 1) {
+            productHandle = urlParts[1].split('?')[0].split('/')[0];
+            log('Extracted product handle from data-url:', productHandle);
+          }
+        }
+      } catch(e) {
+        log('Error extracting product handle', e);
+      }
+    }
+
+    if (!productHandle) {
+      log('Could not extract product handle from quick view modal');
+      return false;
+    }
+
+    // Use helper function to fetch and push
+    fetchAndPushQuickViewAddToCart(productHandle, variantId, quantity, listAttribution);
+    return true; // Successfully handled
+  }
+  {% endif %}
+
+  // ==========================================================================
+  // ADD TO CART CLICK HANDLER - PDP
+  // ==========================================================================
+
+  {% if template.name == 'product' %}
+  // Product page add to cart handler
+  function handleAddToCartClick(button, event) {
+    log('Add to cart button clicked on product page', button);
+
+    // Find the form element
+    var form = button.closest('form[action*="/cart/add"]') || button.form;
+    if (!form) {
+      log('Could not find product form');
+      return;
+    }
+
+    // Detect if this is a quick view modal vs regular PDP
+    var isQuickView = button.id && button.id.includes('quick-view');
+    var context = isQuickView ? 'quick_view' : 'pdp';
+
+    // Get product data from the page
+    var productData = {{ product | json }};
+
+    // Get selected variant ID from form
+    var variantInput = form.querySelector('input[name="id"]') || form.querySelector('select[name="id"]');
+    var variantId = variantInput ? variantInput.value : productData.selected_or_first_available_variant.id;
+
+    // Get quantity
+    var quantityInput = form.querySelector('input[name="quantity"]');
+    var quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+
+    // Find the selected variant data
+    var selectedVariant = productData.variants.find(function(v) {
+      return String(v.id) === String(variantId);
+    }) || productData.selected_or_first_available_variant;
+
+    var price = parsePrice(selectedVariant.price / 100);
+    var value = parsePrice(price * quantity);
+
+    // Build item object
+    var item = {
+      item_id: String(selectedVariant.id),
+      item_name: productData.title,
+      item_brand: productData.vendor,
+      item_category: productData.type,
+      item_variant: selectedVariant.title,
+      price: price,
+      quantity: quantity,
+      currency: page_data.currency,
+      product_id: String(productData.id),
+      variant_id: String(selectedVariant.id),
+      g_product_id: generateGoogleProductId(productData.id, selectedVariant.id),
+      sku: selectedVariant.sku
+    };
+
+    // If quick view, try to get list attribution from sessionStorage
+    if (isQuickView) {
+      try {
+        var attribution = JSON.parse(sessionStorage.getItem('jy_list_attribution') || '{}');
+        var variantAttribution = attribution[String(selectedVariant.id)];
+        if (variantAttribution) {
+          item.item_list_id = variantAttribution.item_list_id;
+          item.item_list_name = variantAttribution.item_list_name;
+        }
+      } catch(e) {
+        log('Error reading list attribution for quick view add to cart', e);
+      }
+    }
+
+    // Push add_to_cart event
+    window.dataLayer.push({
+      event: 'add_to_cart',
+      context: context, // 'quick_view' or 'pdp'
+      ecommerce: {
+        currency: page_data.currency,
+        value: value,
+        items: [item]
+      }
+    });
+
+    log('add_to_cart pushed (' + context + ')', {
+      product: productData.title,
+      variant: selectedVariant.title,
+      quantity: quantity,
+      value: value,
+      list: item.item_list_name || 'none'
+    });
+  }
+  {% elsif template.name == 'collection' %}
+  // Collection page quick-add handler
+  function handleAddToCartClick(button, event) {
+    log('Add to cart button clicked on collection page', button);
+
+    // Find the form element
+    var form = button.closest('form[action*="/cart/add"]') || button.form;
+    if (!form) {
+      log('Could not find product form');
+      return;
+    }
+
+    // Get product ID from form
+    var productIdInput = form.querySelector('input[name="product-id"]') ||
+                         form.querySelector('[data-product-id]') ||
+                         form.querySelector('input[name="id"]');
+
+    if (!productIdInput) {
+      log('Could not find product ID in form');
+      return;
+    }
+
+    var productId = productIdInput.value || productIdInput.getAttribute('data-product-id');
+
+    // Get variant ID
+    var variantInput = form.querySelector('input[name="id"]') || form.querySelector('select[name="id"]');
+    var variantId = variantInput ? variantInput.value : null;
+
+    // Get quantity
+    var quantityInput = form.querySelector('input[name="quantity"]');
+    var quantity = quantityInput ? parseInt(quantityInput.value) || 1 : 1;
+
+    // Find product in collection data
+    var collectionProducts = [
+      {% for product in collection.products %}
+      {
+        id: '{{ product.id }}',
+        title: {{ product.title | json }},
+        handle: '{{ product.handle }}',
+        vendor: {{ product.vendor | json }},
+        type: {{ product.type | json }},
+        variant_id: '{{ product.selected_or_first_available_variant.id }}',
+        variant_title: {{ product.selected_or_first_available_variant.title | json }},
+        price: {{ product.variants.first.price | times: 0.01 }},
+        sku: '{{ product.selected_or_first_available_variant.sku }}'
+      }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    ];
+
+    var product = collectionProducts.find(function(p) {
+      return String(p.id) === String(productId);
+    });
+
+    if (!product) {
+      log('Could not find product in collection', productId);
+      return;
+    }
+
+    var price = parsePrice(product.price);
+    var value = parsePrice(price * quantity);
+    var finalVariantId = variantId || product.variant_id;
+
+    // Push add_to_cart event
+    window.dataLayer.push({
+      event: 'add_to_cart',
+      context: 'collection_quick_add', // Collection page quick-add button
+      ecommerce: {
+        currency: page_data.currency,
+        value: value,
+        items: [{
+          item_id: String(finalVariantId),
+          item_name: product.title,
+          item_brand: product.vendor,
+          item_category: product.type,
+          item_variant: product.variant_title,
+          item_list_name: page_data.collection_title,
+          item_list_id: page_data.collection_id,
+          price: price,
+          quantity: quantity,
+          currency: page_data.currency,
+          product_id: String(product.id),
+          variant_id: String(finalVariantId),
+          g_product_id: generateGoogleProductId(product.id, finalVariantId),
+          sku: product.sku
+        }]
+      }
+    });
+
+    log('add_to_cart pushed (collection quick-add)', {
+      product: product.title,
+      quantity: quantity,
+      value: value
+    });
+
+    // Save list attribution for checkout
+    saveListAttribution(finalVariantId, page_data.collection_id, page_data.collection_title);
+  }
+  {% endif %}
+
+  // ==========================================================================
+  // REMOVE FROM CART HANDLER
+  // ==========================================================================
+
+  function handleRemoveFromCart(button) {
+    log('Remove button clicked', button);
+
+    // Try to find cart item data with multiple strategies
+    // Also try 'tr' alone for table-based cart pages, and 'li' for list-based
+    var cartItem = button.closest('.cart-item, [data-cart-item], tr[data-key], li[data-key], [data-line-item], tr, li');
+
+    if (!cartItem) {
+      log('Could not find cart item element');
+      // If no cart item found, try to extract directly from button href
+      cartItem = null;
+    } else {
+      log('Found cart item element', cartItem);
+    }
+
+    // Extract variant ID from various possible sources
+    var variantId = null;
+
+    // Try cart item attributes first
+    if (cartItem) {
+      variantId = cartItem.getAttribute('data-variant-id') ||
+                  cartItem.getAttribute('data-key') ||
+                  cartItem.getAttribute('data-line-item');
+    }
+
+    // Try button attributes (but NOT data-index as that's the line number, not variant ID)
+    if (!variantId) {
+      variantId = button.getAttribute('data-variant-id');
+    }
+
+    // Parse from href attribute: /cart/change?id=VARIANT_ID:KEY&quantity=0
+    if (!variantId && button.getAttribute('href')) {
+      var href = button.getAttribute('href');
+      // Match pattern: id=52883258245485:449d04ff784dd0e45f7155ff79f44432
+      var match = href.match(/[?&]id=(\d+)(?::|&)/); // Match variant ID before colon or ampersand
+      if (match && match[1]) {
+        variantId = match[1];
+        log('Extracted variant ID from href', variantId);
+      } else {
+        // Fallback: try to get just the numeric part after id=
+        match = href.match(/[?&]id=(\d+)/);
+        if (match && match[1]) {
+          variantId = match[1];
+          log('Extracted variant ID from href (fallback)', variantId);
+        }
+      }
+    }
+
+    if (!variantId) {
+      log('Could not extract variant ID from cart item or button');
+      if (cartItem) {
+        log('Cart item attributes:', Array.from(cartItem.attributes).map(function(a) { return a.name + '=' + a.value; }));
+      }
+      log('Button attributes:', Array.from(button.attributes).map(function(a) { return a.name + '=' + a.value; }));
+      return;
+    }
+
+    log('Extracted variant ID:', variantId);
+
+    // Fetch current cart to get item details
+    fetch('/cart.js')
+      .then(function(response) { return response.json(); })
+      .then(function(cart) {
+        log('Cart fetched for remove, looking for variant:', variantId);
+
+        var item = cart.items.find(function(i) {
+          return String(i.variant_id) === String(variantId) ||
+                 String(i.id) === String(variantId) ||
+                 String(i.key) === String(variantId);
+        });
+
+        if (item) {
+          var formattedItem = formatProductItem(item, 0);
+
+          window.dataLayer.push({
+            event: 'remove_from_cart',
+            ecommerce: {
+              currency: cart.currency,
+              value: parsePrice(formattedItem.price * formattedItem.quantity),
+              items: [formattedItem]
+            }
+          });
+
+          log('remove_from_cart pushed', formattedItem);
+        } else {
+          log('Could not find item in cart with variant ID:', variantId);
+          log('Available cart items:', cart.items.map(function(i) { return i.variant_id; }));
+        }
+      })
+      .catch(function(error) {
+        log('Error fetching cart for remove', error);
+      });
+  }
+
+  // ==========================================================================
+  // QUICK VIEW HANDLER (Collections/Search)
+  // ==========================================================================
+  // Tracks when a user opens a quick view modal from a collection or search page
+
+  {% if template.name == 'collection' %}
+  function handleQuickViewClick(button) {
+    log('Quick view button clicked', button);
+
+    // Extract product ID from aria-controls attribute
+    // Example: aria-controls="QuickView-14862265385325-template--26311877493101__product-grid"
+    var ariaControls = button.getAttribute('aria-controls');
+    var productId = null;
+
+    if (ariaControls && ariaControls.startsWith('QuickView-')) {
+      // Extract product ID: QuickView-[PRODUCT_ID]-...
+      var parts = ariaControls.split('-');
+      if (parts.length >= 2) {
+        productId = parts[1];
+      }
+    }
+
+    if (!productId) {
+      log('Could not extract product ID from quick view button');
+      return;
+    }
+
+    // Find product in collection data
+    var products = [
+      {% for product in collection.products %}
+      {
+        id: '{{ product.id }}',
+        title: {{ product.title | json }},
+        vendor: {{ product.vendor | json }},
+        type: {{ product.type | json }},
+        variant_id: '{{ product.selected_or_first_available_variant.id }}',
+        variant_title: {{ product.selected_or_first_available_variant.title | json }},
+        price: {{ product.variants.first.price | times: 0.01 }},
+        sku: '{{ product.selected_or_first_available_variant.sku }}',
+        index: {{ forloop.index0 }}
+      }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    ];
+
+    var product = products.find(function(p) {
+      return String(p.id) === String(productId);
+    });
+
+    if (!product) {
+      log('Could not find product in collection', productId);
+      return;
+    }
+
+    // Push view_item event with quick_view type
+    window.dataLayer.push({
+      event: 'view_item',
+      view_type: 'quick_view', // Distinguishes from 'pdp' (Product Detail Page)
+      ecommerce: {
+        currency: page_data.currency,
+        value: parsePrice(product.price),
+        items: [{
+          item_id: product.variant_id,
+          item_name: product.title,
+          item_brand: product.vendor,
+          item_category: product.type,
+          item_variant: product.variant_title,
+          price: product.price,
+          currency: page_data.currency,
+          product_id: product.id,
+          variant_id: product.variant_id,
+          g_product_id: generateGoogleProductId(product.id, product.variant_id),
+          sku: product.sku,
+          item_list_id: '{{ collection.id }}',
+          item_list_name: {{ collection.title | json }},
+          index: product.index
+        }]
+      }
+    });
+
+    log('view_item (quick_view) pushed', { product: product.title, view_type: 'quick_view' });
+
+    // Save list attribution for checkout
+    saveListAttribution(product.variant_id, '{{ collection.id }}', {{ collection.title | json }});
+  }
+  {% elsif template.name == 'search' %}
+  function handleQuickViewClick(button) {
+    log('Quick view button clicked', button);
+
+    // Extract product ID from aria-controls attribute
+    var ariaControls = button.getAttribute('aria-controls');
+    var productId = null;
+
+    if (ariaControls && ariaControls.startsWith('QuickView-')) {
+      var parts = ariaControls.split('-');
+      if (parts.length >= 2) {
+        productId = parts[1];
+      }
+    }
+
+    if (!productId) {
+      log('Could not extract product ID from quick view button');
+      return;
+    }
+
+    // Find product in search results
+    var products = [
+      {% for product in search.results %}
+      {% if product.object_type == 'product' %}
+      {
+        id: '{{ product.id }}',
+        title: {{ product.title | json }},
+        vendor: {{ product.vendor | json }},
+        type: {{ product.type | json }},
+        variant_id: '{{ product.selected_or_first_available_variant.id }}',
+        variant_title: {{ product.selected_or_first_available_variant.title | json }},
+        price: {{ product.variants.first.price | times: 0.01 }},
+        index: {{ forloop.index0 }}
+      }{% unless forloop.last %},{% endunless %}
+      {% endif %}
+      {% endfor %}
+    ];
+
+    var product = products.find(function(p) {
+      return String(p.id) === String(productId);
+    });
+
+    if (!product) {
+      log('Could not find product in search results', productId);
+      return;
+    }
+
+    var searchTerm = {{ search.terms | json }};
+    var listName = searchTerm ? 'Search: ' + searchTerm : 'Search Results';
+
+    // Push view_item event with quick_view type
+    window.dataLayer.push({
+      event: 'view_item',
+      view_type: 'quick_view',
+      ecommerce: {
+        currency: page_data.currency,
+        value: parsePrice(product.price),
+        items: [{
+          item_id: product.variant_id,
+          item_name: product.title,
+          item_brand: product.vendor,
+          item_category: product.type,
+          item_variant: product.variant_title,
+          price: product.price,
+          currency: page_data.currency,
+          product_id: product.id,
+          variant_id: product.variant_id,
+          item_list_id: 'search_results',
+          item_list_name: listName,
+          index: product.index
+        }]
+      }
+    });
+
+    log('view_item (quick_view) pushed', { product: product.title, view_type: 'quick_view' });
+
+    // Save list attribution for checkout
+    saveListAttribution(product.variant_id, 'search_results', listName);
+  }
+  {% endif %}
+
+  // ==========================================================================
+  // PRODUCT CLICK HANDLER (Collections/Search)
+  // ==========================================================================
+
+  {% if template.name == 'collection' %}
+  function handleProductClick(link) {
+    var handle = link.href.split('/products/')[1];
+    if (!handle) return;
+
+    // Find product in collection data
+    var products = [
+      {% for product in collection.products %}
+      {
+        handle: '{{ product.handle }}',
+        id: '{{ product.id }}',
+        title: {{ product.title | json }},
+        vendor: {{ product.vendor | json }},
+        type: {{ product.type | json }},
+        variant_id: '{{ product.selected_or_first_available_variant.id }}',
+        price: {{ product.variants.first.price | times: 0.01 }},
+        index: {{ forloop.index0 }}
+      }{% unless forloop.last %},{% endunless %}
+      {% endfor %}
+    ];
+
+    var product = products.find(function(p) { return p.handle === handle.split('?')[0]; });
+
+    if (product) {
+      window.dataLayer.push({
+        event: 'select_item',
+        ecommerce: {
+          item_list_id: '{{ collection.id }}',
+          item_list_name: {{ collection.title | json }},
+          items: [{
+            item_id: product.variant_id,
+            item_name: product.title,
+            item_brand: product.vendor,
+            item_category: product.type,
+            price: product.price,
+            currency: page_data.currency,
+            product_id: product.id,
+            variant_id: product.variant_id,
+            item_list_id: '{{ collection.id }}',
+            item_list_name: {{ collection.title | json }},
+            index: product.index
+          }]
+        }
+      });
+
+      log('select_item pushed', product);
+
+      // Save list attribution for checkout
+      saveListAttribution(product.variant_id, '{{ collection.id }}', {{ collection.title | json }});
+    }
+  }
+  {% elsif template.name == 'search' %}
+  function handleProductClick(link) {
+    var handle = link.href.split('/products/')[1];
+    if (!handle) return;
+
+    var products = [
+      {% for product in search.results %}
+      {% if product.object_type == 'product' %}
+      {
+        handle: '{{ product.handle }}',
+        id: '{{ product.id }}',
+        title: {{ product.title | json }},
+        vendor: {{ product.vendor | json }},
+        type: {{ product.type | json }},
+        variant_id: '{{ product.selected_or_first_available_variant.id }}',
+        price: {{ product.variants.first.price | times: 0.01 }},
+        index: {{ forloop.index0 }}
+      }{% unless forloop.last %},{% endunless %}
+      {% endif %}
+      {% endfor %}
+    ];
+
+    var product = products.find(function(p) { return p.handle === handle.split('?')[0]; });
+
+    if (product) {
+      var searchTerm = {{ search.terms | json }};
+      var listName = searchTerm ? 'Search: ' + searchTerm : 'Search Results';
+
+      window.dataLayer.push({
+        event: 'select_item',
+        ecommerce: {
+          item_list_id: 'search_results',
+          item_list_name: listName,
+          items: [{
+            item_id: product.variant_id,
+            item_name: product.title,
+            item_brand: product.vendor,
+            item_category: product.type,
+            price: product.price,
+            currency: page_data.currency,
+            product_id: product.id,
+            variant_id: product.variant_id,
+            item_list_id: 'search_results',
+            item_list_name: listName,
+            index: product.index
+          }]
+        }
+      });
+
+      log('select_item pushed', product);
+
+      // Save list attribution for checkout
+      saveListAttribution(product.variant_id, 'search_results', listName);
+    }
+  }
+  {% endif %}
+
+  // ==========================================================================
+  // CART DRAWER TRACKING
+  // ==========================================================================
+
+  // Track when cart drawer opens (view_cart event with mini_cart type)
+  (function() {
+    var drawerSelectors = CONFIG.selectors.cartDrawer;
+    var drawerObserver = null;
+    var foundDrawer = null;
+    var lastDrawerState = null; // Track last known state
+    var drawerCheckTimeout = null;
+
+    function checkCartDrawer(trigger) {
+      // Clear any pending checks
+      if (drawerCheckTimeout) {
+        clearTimeout(drawerCheckTimeout);
+        drawerCheckTimeout = null;
+      }
+
+      for (var i = 0; i < drawerSelectors.length; i++) {
+        var drawer = document.querySelector(drawerSelectors[i]);
+        if (drawer) {
+          foundDrawer = drawer;
+
+          // Check if drawer is visible - must NOT have 'hidden' attribute
+          var isVisible = !drawer.hasAttribute('hidden') &&
+                         !drawer.classList.contains('hidden') &&
+                         drawer.style.display !== 'none';
+
+          // Only track if state changed from hidden to visible
+          if (isVisible && lastDrawerState !== 'visible') {
+            lastDrawerState = 'visible';
+            log('Cart drawer opened, tracking view');
+            trackCartDrawerView(trigger || 'auto');
+            return true;
+          } else if (!isVisible && lastDrawerState === 'visible') {
+            lastDrawerState = 'hidden';
+            log('Cart drawer closed');
+          }
+        }
+      }
+      return false;
+    }
+
+    function trackCartDrawerView(trigger) {
+      // Prevent duplicate events within 3 seconds
+      if (window._cartDrawerTracked && Date.now() - window._cartDrawerTracked < 3000) {
+        log('Debounced view_cart drawer event (too soon)');
+        return;
+      }
+      window._cartDrawerTracked = Date.now();
+
+      fetch('/cart.js')
+        .then(function(response) { return response.json(); })
+        .then(function(cart) {
+          var items = cart.items.map(function(item, index) {
+            return formatProductItem(item, index);
+          });
+          var totalValue = items.reduce(function(sum, item) {
+            return sum + (item.price || 0) * (item.quantity || 1);
+          }, 0);
+
+          window.dataLayer.push({
+            event: 'view_cart',
+            cart_type: 'drawer',
+            trigger: trigger, // 'auto' (after add to cart) or 'manual' (clicked cart icon)
+            ecommerce: {
+              currency: cart.currency,
+              value: parsePrice(totalValue),
+              items: items
+            }
+          });
+
+          log('view_cart (drawer) pushed', { trigger: trigger, items_count: items.length, value: totalValue });
+        })
+        .catch(function(error) {
+          log('Error fetching cart for drawer view', error);
+        });
+    }
+
+    // Watch for cart drawer opening via MutationObserver
+    function setupDrawerObserver() {
+      if (drawerObserver) return;
+
+      drawerObserver = new MutationObserver(function(mutations) {
+        // Debounce mutations - only check once after rapid changes
+        if (drawerCheckTimeout) {
+          clearTimeout(drawerCheckTimeout);
+        }
+        drawerCheckTimeout = setTimeout(function() {
+          checkCartDrawer('auto');
+        }, 100);
+      });
+
+      // Observe each possible drawer element
+      log('Setting up cart drawer observers for selectors:', drawerSelectors);
+      drawerSelectors.forEach(function(selector) {
+        var drawer = document.querySelector(selector);
+        if (drawer) {
+          log('Observing drawer element:', selector);
+          drawerObserver.observe(drawer, {
+            attributes: true,
+            attributeFilter: ['hidden', 'class', 'style', 'open']
+          });
+        }
+      });
+
+      if (!foundDrawer) {
+        log('WARNING: No cart drawer element found with configured selectors');
+      }
+    }
+
+    // Setup observer when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupDrawerObserver);
+    } else {
+      setupDrawerObserver();
+    }
+
+    // Listen for clicks on cart icon/button to detect manual opens
+    document.addEventListener('click', function(event) {
+      var target = event.target;
+      var cartButton = target.closest('a[href="/cart"], a[href*="#cart"], button[aria-controls*="cart"], [data-cart-trigger]') ||
+                       (target.classList && (target.classList.contains('cart-icon') || target.classList.contains('cart-button')));
+
+      if (cartButton) {
+        log('Cart icon clicked - manual drawer open');
+        // Set a flag that next drawer open is manual
+        window._nextDrawerTrigger = 'manual';
+        setTimeout(function() {
+          window._nextDrawerTrigger = null;
+        }, 500);
+      }
+    });
+
+    // Override checkCartDrawer trigger based on manual flag
+    var originalCheckDrawer = checkCartDrawer;
+    checkCartDrawer = function(defaultTrigger) {
+      var trigger = window._nextDrawerTrigger || defaultTrigger || 'auto';
+      if (window._nextDrawerTrigger) {
+        window._nextDrawerTrigger = null;
+      }
+      return originalCheckDrawer(trigger);
+    };
+
+    // Listen for various cart events from different themes
+    var cartEvents = [
+      'cart:refresh',
+      'cart:open',
+      'cart-drawer:open',
+      'drawer:open',
+      'shopify:section:load'
+    ];
+
+    cartEvents.forEach(function(eventName) {
+      document.addEventListener(eventName, function() {
+        log('Cart event detected:', eventName);
+        setTimeout(function() { checkCartDrawer('auto'); }, 100);
+      });
+    });
+  })();
+
+  // ==========================================================================
+  // INITIALIZATION COMPLETE
+  // ==========================================================================
+
+  log('JY Insights Gold Plus tracking initialized', {
+    version: CONFIG.version,
+    page_type: page_data.page_type,
+    customer_logged_in: user_data.logged_in
+  });
+
+})();
+</script>

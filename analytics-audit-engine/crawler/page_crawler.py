@@ -44,6 +44,8 @@ class CrawledPage:
     has_linkedin_insight: bool = False
     has_hotjar: bool = False
     has_google_ads: bool = False
+    has_adobe_launch: bool = False
+    adobe_launch_property: Optional[str] = None
 
     # Consent & Privacy
     has_consent_banner: bool = False
@@ -302,8 +304,9 @@ class AnalyticsCrawler:
         gtm_check = await page.evaluate("""
             () => {
                 if (window.google_tag_manager) {
-                    const containers = Object.keys(window.google_tag_manager);
-                    return {has_gtm: true, container_ids: containers};
+                    const containers = Object.keys(window.google_tag_manager)
+                        .filter(key => key.startsWith('GTM-'));
+                    return {has_gtm: containers.length > 0, container_ids: containers};
                 }
                 return {has_gtm: false, container_ids: []};
             }
@@ -311,6 +314,22 @@ class AnalyticsCrawler:
 
         page_data.has_gtm = gtm_check['has_gtm']
         page_data.gtm_container_ids = gtm_check['container_ids']
+
+        # Check for Adobe Launch
+        adobe_check = await page.evaluate("""
+            () => {
+                // Check for Adobe Launch (Adobe Experience Platform Tags)
+                if (window._satellite) {
+                    const buildInfo = window._satellite.buildInfo || {};
+                    const property = buildInfo.propertyName || 'Unknown';
+                    return {has_adobe_launch: true, property_name: property};
+                }
+                return {has_adobe_launch: false, property_name: null};
+            }
+        """)
+
+        page_data.has_adobe_launch = adobe_check['has_adobe_launch']
+        page_data.adobe_launch_property = adobe_check['property_name']
 
         # Check for Universal Analytics (legacy)
         ua_check = await page.evaluate("""

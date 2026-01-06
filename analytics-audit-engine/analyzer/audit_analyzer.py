@@ -138,6 +138,8 @@ class AuditAnalyzer:
             has_linkedin_insight=crawled_page.has_linkedin_insight,
             has_hotjar=crawled_page.has_hotjar,
             has_google_ads=crawled_page.has_google_ads,
+            has_adobe_launch=crawled_page.has_adobe_launch,
+            adobe_launch_property=crawled_page.adobe_launch_property,
 
             # Privacy
             has_consent_banner=crawled_page.has_consent_banner,
@@ -326,6 +328,54 @@ class AuditAnalyzer:
 
         session.flush()
 
+        # DEDUPLICATION: Aggregate duplicate page-level issues into audit-level issues
+        # Get all page-level issues for this audit
+        page_issues = session.query(self.Issue).filter(
+            self.Issue.audit_id == audit.audit_id,
+            self.Issue.page_id.isnot(None)  # Only page-level issues
+        ).all()
+
+        # Group issues by (title, severity, category)
+        issue_groups = {}
+        for issue in page_issues:
+            key = (issue.title, issue.severity, issue.category)
+            if key not in issue_groups:
+                issue_groups[key] = []
+            issue_groups[key].append(issue)
+
+        # For each group with more than one occurrence, create an audit-level issue
+        for (title, severity, category), grouped_issues in issue_groups.items():
+            if len(grouped_issues) > 1:
+                # Collect all affected URLs
+                affected_urls_list = []
+                for iss in grouped_issues:
+                    if iss.affected_urls:
+                        try:
+                            urls = json.loads(iss.affected_urls) if isinstance(iss.affected_urls, str) else iss.affected_urls
+                            if isinstance(urls, list):
+                                affected_urls_list.extend(urls)
+                        except:
+                            pass
+
+                # Create aggregated audit-level issue
+                aggregated_issue = self.Issue(
+                    audit_id=audit.audit_id,
+                    page_id=None,  # Audit-level issue
+                    severity=severity,
+                    category=category,
+                    title=title,
+                    description=f'{title} (found on {len(grouped_issues)} pages)',
+                    recommendation=grouped_issues[0].recommendation,
+                    affected_urls=to_json_if_needed(list(set(affected_urls_list)))  # Deduplicate URLs
+                )
+                session.add(aggregated_issue)
+
+                # Delete the individual page-level issues
+                for iss in grouped_issues:
+                    session.delete(iss)
+
+        session.flush()
+
     def _calculate_scores(self, session, audit):
         """Calculate audit scores based on tag coverage, compliance, and performance"""
 
@@ -362,68 +412,117 @@ class AuditAnalyzer:
                 audit.performance_score = 0.0
                 return
 
-            # Calculate Implementation Score (0-100)
-            implementation_score = 100.0
+            # Calculate Implementation Score (0-100) - STRICTER CRITERIA
+            implementation_score = 85.0  # Start at 85, perfect implementation is rare
 
-            # GA4 coverage (40 points)
+            # GA4 coverage (35 points) - Stricter: any page without GA4 is a problem
             ga4_pages = sum(1 for p in pages if p.has_ga4)
             ga4_coverage = (ga4_pages / len(pages)) * 100
-            implementation_score -= max(0, (100 - ga4_coverage) * 0.4)
+            if ga4_coverage < 100:
+                implementation_score -= (100 - ga4_coverage) * 0.35
 
-            # GTM coverage (30 points)
+            # Deduct if GA4 events are not being tracked properly (5 points)
+            ga4_with_events = sum(1 for p in pages if p.has_ga4 and p.has_page_view_event)
+            if ga4_pages > 0:
+                event_coverage = (ga4_with_events / ga4_pages) * 100
+                if event_coverage < 90:
+                    implementation_score -= 5
+
+            # GTM coverage (25 points) - Stricter threshold
             gtm_pages = sum(1 for p in pages if p.has_gtm)
             gtm_coverage = (gtm_pages / len(pages)) * 100
-            implementation_score -= max(0, (100 - gtm_coverage) * 0.3)
+            if gtm_coverage < 95:
+                implementation_score -= (100 - gtm_coverage) * 0.25
 
-            # DataLayer implementation (30 points)
+            # DataLayer implementation (20 points) - Must be present where GTM exists
             datalayer_pages = sum(1 for p in pages if p.has_datalayer)
             if gtm_pages > 0:
                 datalayer_coverage = (datalayer_pages / gtm_pages) * 100
-                implementation_score -= max(0, (100 - datalayer_coverage) * 0.3)
+                implementation_score -= max(0, (100 - datalayer_coverage) * 0.2)
+
+            # Deduct if dataLayer not defined before GTM (5 points)
+            gtm_with_proper_datalayer = sum(1 for p in pages if p.has_gtm and p.datalayer_defined_before_gtm)
+            if gtm_pages > 0 and gtm_with_proper_datalayer < gtm_pages:
+                implementation_score -= 5
+
+            # Deduct for implementation issues (10 points)
+            impl_issues = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.category == 'implementation'
+            ).count()
+            implementation_score -= min(10, impl_issues * 2)
 
             audit.implementation_score = max(0, implementation_score)
 
-            # Calculate Compliance Score (0-100)
-            compliance_score = 100.0
+            # Calculate Compliance Score (0-100) - STRICTER CRITERIA
+            compliance_score = 80.0  # Start lower, perfect compliance is challenging
 
-            # Consent banner coverage (60 points)
+            # Consent banner coverage (50 points) - MUST be 100% for good score
             consent_pages = sum(1 for p in pages if p.has_consent_banner)
             consent_coverage = (consent_pages / len(pages)) * 100
-            compliance_score -= max(0, (100 - consent_coverage) * 0.6)
+            if consent_coverage < 100:
+                compliance_score -= (100 - consent_coverage) * 0.5
 
-            # Privacy policy link (20 points)
+            # Deduct if consent banner exists but tags may fire before consent (10 points)
+            pages_with_consent_issues = sum(1 for p in pages if p.has_consent_banner and not p.datalayer_defined_before_gtm)
+            if pages_with_consent_issues > 0:
+                compliance_score -= min(10, pages_with_consent_issues * 2)
+
+            # Privacy policy link (15 points)
             privacy_pages = sum(1 for p in pages if p.has_privacy_policy_link)
             privacy_coverage = (privacy_pages / len(pages)) * 100
-            compliance_score -= max(0, (100 - privacy_coverage) * 0.2)
+            if privacy_coverage < 90:
+                compliance_score -= (100 - privacy_coverage) * 0.15
 
-            # Deduct for critical compliance issues (20 points)
-            compliance_issues = session.query(self.Issue).filter(
+            # Deduct for critical compliance issues (15 points)
+            critical_compliance_issues = session.query(self.Issue).filter(
                 self.Issue.audit_id == audit.audit_id,
                 self.Issue.category == 'privacy',
                 self.Issue.severity == 'critical'
             ).count()
-            compliance_score -= min(20, compliance_issues * 10)
+            compliance_score -= min(15, critical_compliance_issues * 5)
+
+            # Deduct for warning compliance issues (10 points)
+            warning_compliance_issues = session.query(self.Issue).filter(
+                self.Issue.audit_id == audit.audit_id,
+                self.Issue.category == 'privacy',
+                self.Issue.severity == 'warning'
+            ).count()
+            compliance_score -= min(10, warning_compliance_issues * 2)
 
             audit.compliance_score = max(0, compliance_score)
 
-            # Calculate Performance Score (0-100)
-            performance_score = 100.0
+            # Calculate Performance Score (0-100) - STRICTER CRITERIA
+            performance_score = 90.0  # Start at 90, some overhead is expected
 
-            # Average tracking scripts (lower is better)
+            # Average tracking scripts (lower is better) - More granular penalties
             avg_scripts = sum(p.tracking_scripts or 0 for p in pages) / len(pages)
-            if avg_scripts > 15:
+            if avg_scripts > 20:
+                performance_score -= 40
+            elif avg_scripts > 15:
                 performance_score -= 30
             elif avg_scripts > 10:
                 performance_score -= 20
+            elif avg_scripts > 7:
+                performance_score -= 15
             elif avg_scripts > 5:
                 performance_score -= 10
+
+            # Average page load time (lower is better)
+            avg_load_time = sum(float(p.load_time_seconds or 0) for p in pages) / len(pages)
+            if avg_load_time > 5:
+                performance_score -= 20
+            elif avg_load_time > 3:
+                performance_score -= 10
+            elif avg_load_time > 2:
+                performance_score -= 5
 
             # Deduct for performance issues
             perf_issues = session.query(self.Issue).filter(
                 self.Issue.audit_id == audit.audit_id,
                 self.Issue.category == 'performance'
             ).count()
-            performance_score -= min(30, perf_issues * 10)
+            performance_score -= min(20, perf_issues * 5)
 
             audit.performance_score = max(0, performance_score)
 
@@ -464,6 +563,31 @@ class AuditAnalyzer:
             pages = session.query(self.Page).filter(self.Page.audit_id == audit_id).all()
             issues = session.query(self.Issue).filter(self.Issue.audit_id == audit_id).all()
 
+            # Helper to parse JSON fields for SQLite
+            def parse_json_field(value):
+                if isinstance(value, str):
+                    try:
+                        return json.loads(value)
+                    except:
+                        return []
+                return value or []
+
+            # Collect all unique GA4 IDs, GTM containers, and Adobe Launch properties
+            all_ga4_ids = set()
+            all_gtm_ids = set()
+            all_adobe_properties = set()
+            for p in pages:
+                if p.ga4_measurement_ids:
+                    # Only include IDs that start with "G-"
+                    ga4_ids = parse_json_field(p.ga4_measurement_ids)
+                    all_ga4_ids.update([id for id in ga4_ids if str(id).startswith('G-')])
+                if p.gtm_container_ids:
+                    # Only include IDs that start with "GTM-"
+                    gtm_ids = parse_json_field(p.gtm_container_ids)
+                    all_gtm_ids.update([id for id in gtm_ids if str(id).startswith('GTM-')])
+                if p.has_adobe_launch and p.adobe_launch_property:
+                    all_adobe_properties.add(p.adobe_launch_property)
+
             return {
                 'audit_id': str(audit.audit_id),
                 'site_url': audit.site_url,
@@ -480,6 +604,7 @@ class AuditAnalyzer:
                         'severity': issue.severity,
                         'category': issue.category,
                         'title': issue.title,
+                        'description': issue.description,
                         'recommendation': issue.recommendation
                     }
                     for issue in issues
@@ -487,8 +612,39 @@ class AuditAnalyzer:
                 'tag_coverage': {
                     'ga4': sum(1 for p in pages if p.has_ga4) / len(pages) * 100 if pages else 0,
                     'gtm': sum(1 for p in pages if p.has_gtm) / len(pages) * 100 if pages else 0,
-                    'consent': sum(1 for p in pages if p.has_consent_banner) / len(pages) * 100 if pages else 0
+                    'consent': sum(1 for p in pages if p.has_consent_banner) / len(pages) * 100 if pages else 0,
+                    'adobe_launch': sum(1 for p in pages if p.has_adobe_launch) / len(pages) * 100 if pages else 0
                 },
+                'ga4_measurement_ids': list(all_ga4_ids),
+                'gtm_container_ids': list(all_gtm_ids),
+                'adobe_launch_properties': list(all_adobe_properties),
+                'pages': [
+                    {
+                        'url': p.url,
+                        'title': p.title,
+                        'page_type': p.page_type,
+                        'has_ga4': p.has_ga4,
+                        'ga4_measurement_ids': parse_json_field(p.ga4_measurement_ids),
+                        'has_gtm': p.has_gtm,
+                        'gtm_container_ids': parse_json_field(p.gtm_container_ids),
+                        'has_consent_banner': p.has_consent_banner,
+                        'consent_platform': p.consent_platform,
+                        'has_datalayer': p.has_datalayer,
+                        'datalayer_defined_before_gtm': p.datalayer_defined_before_gtm,
+                        'datalayer_events': parse_json_field(p.datalayer_events),
+                        'has_facebook_pixel': p.has_facebook_pixel,
+                        'facebook_pixel_ids': parse_json_field(p.facebook_pixel_ids),
+                        'has_linkedin_insight': p.has_linkedin_insight,
+                        'has_hotjar': p.has_hotjar,
+                        'has_google_ads': p.has_google_ads,
+                        'has_adobe_launch': p.has_adobe_launch,
+                        'adobe_launch_property': p.adobe_launch_property,
+                        'total_scripts': p.total_scripts,
+                        'tracking_scripts': p.tracking_scripts,
+                        'load_time_seconds': float(p.load_time_seconds) if p.load_time_seconds else 0
+                    }
+                    for p in pages
+                ],
                 'started_at': audit.started_at.isoformat() if audit.started_at else None,
                 'completed_at': audit.completed_at.isoformat() if audit.completed_at else None
             }
