@@ -1,8 +1,8 @@
 /**
  * JY Insights Gold Plus Package - Checkout Pixel
  * GA4-compliant checkout tracking for Shopify Customer Events
- * Version: 1.4 (Gold Plus)
- * Last Updated: 2026-01-06
+ * Version: 1.7 (Gold Plus)
+ * Last Updated: 2026-01-07
  *
  * Installation: Add as Custom Pixel in Shopify Admin > Settings > Customer Events
  * Configuration: Update CONFIG.gtmContainerId with your GTM container ID
@@ -13,18 +13,40 @@
  * - Subscribes to Shopify checkout events via analytics.subscribe()
  * - Pushes GA4-compliant events to window.dataLayer
  * - Runs in sandboxed iframe with GTM loaded inside the iframe
- * - GTM loads lazily on first checkout event (not on storefront pages)
+ * - GTM loads LAZILY on first checkout event (not on storefront pages)
+ * - Uses direct dataLayer.push() for all events (no queue system needed)
  * - Collects coupon codes, item-level discounts, and marketing opt-in
  * - Maintains consistency with storefront tracking (gold-storefront-datalayer-GA4.liquid)
+ * - Reads logged_in status from storefront via sessionStorage
  *
  * TRACKED EVENTS (Sequence):
- * 1. page_viewed → user_data_ready, page_data_ready, page_view (ONCE per session)
- * 2. checkout_started → begin_checkout
- * 3. checkout_contact_info_submitted → add_contact_info
- * 4. checkout_address_info_submitted → add_shipping_info (tier: not_selected)
- * 5. checkout_shipping_info_submitted → add_shipping_info (tier: actual method)
- * 6. payment_info_submitted → add_payment_info
- * 7. checkout_completed → purchase (with full user_data)
+ * 1. checkout_started → user_data_ready, page_data_ready, page_view, begin_checkout
+ * 2. checkout_contact_info_submitted → add_contact_info
+ * 3. checkout_address_info_submitted → add_shipping_info (tier: not_selected)
+ * 4. checkout_shipping_info_submitted → add_shipping_info (tier: actual method)
+ * 5. payment_info_submitted → add_payment_info
+ * 6. checkout_completed → purchase (with full user_data)
+ *
+ * CHANGELOG v1.7:
+ * - Fixed context events (user_data_ready, page_data_ready, page_view) not firing
+ * - Moved context events from page_viewed subscriber to checkout_started subscriber
+ * - page_viewed event has no checkout data, so context events now fire from checkout_started
+ * - Added contextEventsSent flag to ensure context events only fire once per session
+ * - Context events now fire before begin_checkout event
+ * - Added logged_in status persistence via sessionStorage
+ * - Checkout pixel now reads logged_in status from storefront if checkout.customer is undefined
+ * - Fixes issue where logged-in customers appear as guests in checkout
+ * - Requires storefront pixel v1.4+ to persist logged_in status
+ *
+ * CHANGELOG v1.6:
+ * - Removed event queue system (was unnecessary complexity)
+ * - Implemented immediate GTM loading using init.context.document pattern
+ * - Changed all events to use direct window.dataLayer.push() calls
+ * - Follows Shopify's recommended pattern for custom pixels
+ *
+ * CHANGELOG v1.5:
+ * - [DEPRECATED - approach was incorrect, see v1.7]
+ * - Attempted event queue system that didn't resolve timing issues
  *
  * CHANGELOG v1.4:
  * - Added list attribution persistence from storefront via sessionStorage
@@ -48,7 +70,7 @@
 
   var CONFIG = {
     debug: true,
-    version: '1.4',
+    version: '1.7',
     googleFeedRegion: 'US',
     gtmContainerId: 'GTM-K9JX87Z6' // Replace with your GTM container ID
   };
@@ -240,6 +262,21 @@
     var shippingAddress = checkout.shippingAddress;
     var billingAddress = checkout.billingAddress;
 
+    // Check sessionStorage for logged_in status from storefront
+    // Storefront pixel sets this when customer is logged in
+    var storefrontLoggedIn = false;
+    if (isSessionStorageAvailable()) {
+      try {
+        var stored = sessionStorage.getItem('jy_customer_logged_in');
+        storefrontLoggedIn = stored === 'true';
+      } catch(e) {
+        log('Error reading logged_in status from sessionStorage', e);
+      }
+    }
+
+    // Determine logged_in status: use checkout.customer if available, otherwise fall back to storefront status
+    var isLoggedIn = !!customer || storefrontLoggedIn;
+
     // Determine which address to use (prefer shipping, fallback to billing)
     var address = (shippingAddress && shippingAddress.lastName)
       ? shippingAddress
@@ -249,8 +286,8 @@
 
     var userData = {
       // Customer status
-      logged_in: !!customer,
-      customer_type: customer && customer.ordersCount > 0 ? 'returning' : customer ? 'new' : 'guest'
+      logged_in: isLoggedIn,
+      customer_type: customer && customer.ordersCount > 0 ? 'returning' : customer ? 'new' : isLoggedIn ? 'returning' : 'guest'
     };
 
     // Email (required for Enhanced Conversions & Meta CAPI)
@@ -296,109 +333,110 @@
   }
 
   // ==========================================================================
-  // ENVIRONMENT DETECTION & GTM INTEGRATION
+  // LAZY GTM INITIALIZATION
   // ==========================================================================
-  // CRITICAL: Do NOT initialize dataLayer on module load.
-  // The pixel loads on ALL pages (storefront + checkout) but events only fire on checkout.
-  // We'll initialize dataLayer AND GTM ONLY when first checkout event fires.
-  //
-  // NOTE: Shopify Customer Events run in a sandboxed iframe. We need GTM loaded
-  // in this iframe to process the dataLayer events we push.
+  // GTM loads ONLY when first checkout event fires (not on storefront pages)
+  // This prevents checkout pixel from interfering with storefront tracking
 
-  var dataLayerInitialized = false;
   var gtmLoaded = false;
 
-  function ensureDataLayer() {
-    if (!dataLayerInitialized) {
-      window.dataLayer = window.dataLayer || [];
-      dataLayerInitialized = true;
-      log('Checkout pixel initialized - first checkout event detected', { version: CONFIG.version });
-    }
-  }
-
-  function loadGTM() {
+  function ensureGTM() {
     if (gtmLoaded) return;
     gtmLoaded = true;
 
-    // Initialize GTM in the iframe
-    (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer',CONFIG.gtmContainerId);
+    // Initialize dataLayer
+    window.dataLayer = window.dataLayer || [];
 
-    log('GTM loaded in checkout pixel iframe', { containerId: CONFIG.gtmContainerId });
-  }
+    // Get initial context from Shopify's init object
+    var initContextData = (typeof init !== 'undefined' && init.context) ? init.context.document : null;
 
-  function ensureGTM() {
-    ensureDataLayer();
-    loadGTM();
-  }
-
-  // ==========================================================================
-  // PAGE VIEW - Checkout Started
-  // ==========================================================================
-
-  analytics.subscribe('page_viewed', function(event) {
-    var context = event.context;
-    var checkout = event.data.checkout;
-
-    // Guard: Only run on actual checkout pages with checkout data
-    if (!checkout || !checkout.currencyCode) {
-      return; // Silently exit - don't even log on storefront
+    if (initContextData) {
+      window.dataLayer.push({
+        page_location: initContextData.location ? initContextData.location.href : '',
+        page_referrer: initContextData.referrer || '',
+        page_title: initContextData.title || ''
+      });
+      log('Initial page data pushed to dataLayer', {
+        page_title: initContextData.title
+      });
     }
 
-    // Initialize dataLayer and GTM on first checkout event
-    ensureGTM();
+    // Load GTM script
+    (function(w,d,s,l,i){
+      w[l]=w[l]||[];
+      w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
+      var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s), dl=l!='dataLayer'?'&l='+l:'';
+      j.async=true;
+      j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+      f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer', CONFIG.gtmContainerId);
 
-    // Format user data
-    var userData = formatCustomerData(checkout);
-
-    // Format page data
-    var pageData = {
-      page_type: 'checkout',
-      page_location: context.document.location.href,
-      page_path: context.document.location.pathname,
-      page_title: context.document.title,
-      currency: checkout.currencyCode,
-      language: context.navigator.language
-    };
-
-    // Push user_data (checkout context)
-    window.dataLayer.push({
-      event: 'user_data_ready',
-      user_data: userData
+    log('GTM loaded in checkout pixel iframe', {
+      version: CONFIG.version,
+      containerId: CONFIG.gtmContainerId
     });
-    log('user_data_ready pushed (checkout context)');
-
-    // Push page_data (checkout context)
-    window.dataLayer.push({
-      event: 'page_data_ready',
-      page_data: pageData
-    });
-    log('page_data_ready pushed (checkout context)');
-
-    // Push page_view event for checkout
-    window.dataLayer.push({
-      event: 'page_view',
-      context: 'checkout',
-      page_type: 'checkout',
-      page_title: context.document.title,
-      user_logged_in: userData.logged_in
-    });
-
-    log('page_view pushed', { context: 'checkout' });
-  });
+  }
 
   // ==========================================================================
-  // CHECKOUT STARTED
+  // CHECKOUT STARTED (fires on page load with checkout data)
   // ==========================================================================
+  // NOTE: checkout_started fires first with all checkout data
+  // page_viewed fires but has no checkout data in event.data.checkout
+
+  var contextEventsSent = false; // Flag to ensure context events only fire once
 
   analytics.subscribe('checkout_started', function(event) {
+    var context = event.context;
     var checkout = event.data.checkout;
     if (!checkout || !checkout.lineItems) return;
 
+    // Lazy load GTM on first checkout event
     ensureGTM();
+
+    // Push context events ONCE (user_data_ready, page_data_ready, page_view)
+    if (!contextEventsSent) {
+      var eventContextData = context ? context.document : null;
+
+      // Format user data
+      var userData = formatCustomerData(checkout);
+
+      // Format page data
+      var pageData = {
+        page_type: 'checkout',
+        page_location: eventContextData ? eventContextData.location.href : '',
+        page_path: eventContextData ? eventContextData.location.pathname : '',
+        page_title: eventContextData ? eventContextData.title : '',
+        currency: checkout.currencyCode || 'USD',
+        language: context.navigator ? context.navigator.language : ''
+      };
+
+      // Push user_data_ready event
+      window.dataLayer.push({
+        event: 'user_data_ready',
+        user_data: userData
+      });
+      log('user_data_ready pushed', userData);
+
+      // Push page_data_ready event
+      window.dataLayer.push({
+        event: 'page_data_ready',
+        page_data: pageData
+      });
+      log('page_data_ready pushed', pageData);
+
+      // Push page_view event
+      window.dataLayer.push({
+        event: 'page_view',
+        context: 'checkout',
+        page_type: 'checkout',
+        page_title: eventContextData ? eventContextData.title : '',
+        user_logged_in: userData.logged_in
+      });
+      log('page_view pushed');
+
+      contextEventsSent = true;
+    }
 
     // Format items with proper index
     var items = checkout.lineItems.map(function(item, index) {
@@ -438,8 +476,6 @@
     var checkout = event.data.checkout;
     if (!checkout) return;
 
-    ensureGTM();
-
     log('checkout_contact_info_submitted', {
       email: checkout.email ? 'provided' : 'not provided'
     });
@@ -459,8 +495,6 @@
   analytics.subscribe('checkout_address_info_submitted', function(event) {
     var checkout = event.data.checkout;
     if (!checkout) return;
-
-    ensureGTM();
 
     var shippingAddress = checkout.shippingAddress;
     var billingAddress = checkout.billingAddress;
@@ -514,8 +548,6 @@
     var checkout = event.data.checkout;
     if (!checkout || !checkout.lineItems) return;
 
-    ensureGTM();
-
     var items = checkout.lineItems.map(function(item, index) {
       return formatLineItem(item, index);
     });
@@ -555,8 +587,6 @@
   analytics.subscribe('payment_info_submitted', function(event) {
     var checkout = event.data.checkout;
     if (!checkout || !checkout.lineItems) return;
-
-    ensureGTM();
 
     var items = checkout.lineItems.map(function(item, index) {
       return formatLineItem(item, index);
@@ -603,8 +633,6 @@
   analytics.subscribe('checkout_completed', function(event) {
     var checkout = event.data.checkout;
     if (!checkout || !checkout.lineItems) return;
-
-    ensureGTM();
 
     var items = checkout.lineItems.map(function(item, index) {
       return formatLineItem(item, index);

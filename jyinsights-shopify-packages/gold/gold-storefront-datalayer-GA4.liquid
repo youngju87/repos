@@ -2,8 +2,8 @@
 /**
  * JY Insights Gold Plus Package - Storefront Data Layer
  * Full GA4-compliant ecommerce tracking for Shopify storefront
- * Version: 1.3 (Gold Plus)
- * Last Updated: 2026-01-06
+ * Version: 1.4 (Gold Plus)
+ * Last Updated: 2026-01-07
  *
  * Installation: Add to theme.liquid before </head>
  * Configuration: Update GTM container ID (line 15) with your GTM-XXXXXXX
@@ -16,6 +16,7 @@
  * - GTM loaded directly in parent window
  * - Checkout tracking handled separately by gold-checkout-pixel-GA4.js
  * - Maintains consistency with checkout pixel data structure
+ * - Persists logged_in status to sessionStorage for checkout pixel
  *
  * TRACKED EVENTS:
  * - user_data_ready (session context with customer info)
@@ -28,6 +29,12 @@
  * - remove_from_cart (cart page + drawer)
  * - select_item (product clicks from collections/search)
  * - search (search page)
+ *
+ * CHANGELOG v1.4:
+ * - Added sessionStorage persistence for logged_in status
+ * - Storefront now saves logged_in status to sessionStorage for checkout pixel
+ * - Fixes issue where logged-in customers appear as guests in checkout
+ * - Ensures consistent user tracking across storefront and checkout
  *
  * CHANGELOG v1.3:
  * - Added sessionStorage persistence for item list attribution
@@ -74,7 +81,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   // Configuration
   var CONFIG = {
     debug: true,
-    version: '1.3',
+    version: '1.4',
     googleFeedRegion: 'US',
 
     // Theme Selectors
@@ -312,6 +319,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     customer_type: 'guest'
     {% endif %}
   };
+
+  // Persist logged_in status to sessionStorage for checkout pixel
+  // Checkout pixel may not have access to customer object, so it reads from sessionStorage
+  if (isSessionStorageAvailable()) {
+    try {
+      sessionStorage.setItem('jy_customer_logged_in', String(user_data.logged_in));
+    } catch(e) {
+      log('Error saving logged_in status to sessionStorage', e);
+    }
+  }
 
   // ==========================================================================
   // PAGE DATA OBJECT - Navigation & Page Context
