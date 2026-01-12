@@ -1,0 +1,166 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-01-11 12:00:00",
+  "containerVersion": {
+    "name": "Consent Mode Variables & Triggers",
+    "description": "Google Consent Mode v2 and Microsoft Consent Mode variables and triggers for Shopify Privacy API integration. Contains 3 data layer variables for tracking consent state and 2 custom event triggers for consent events.",
+    "container": {
+      "name": "Consent Mode Configuration",
+      "usageContext": [
+        "WEB"
+      ]
+    },
+    "variable": [
+      {
+        "variableId": "1",
+        "name": "Consent - Analytics Storage",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state.analytics_storage"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "denied"
+          }
+        ],
+        "fingerprint": "1736611200001"
+      },
+      {
+        "variableId": "2",
+        "name": "Consent - Ad Storage",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state.ad_storage"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "denied"
+          }
+        ],
+        "fingerprint": "1736611200002"
+      },
+      {
+        "variableId": "3",
+        "name": "Microsoft - Advertising Consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "microsoft_advertising_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736611200003"
+      }
+    ],
+    "trigger": [
+      {
+        "triggerId": "1",
+        "name": "Event - Consent Updated",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_updated"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736611200004"
+      },
+      {
+        "triggerId": "2",
+        "name": "Consent - Advertising Granted",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_updated"
+              }
+            ]
+          }
+        ],
+        "filter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{Consent - Ad Storage}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "granted"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736611200005"
+      }
+    ],
+    "fingerprint": "1736611200000"
+  }
+}

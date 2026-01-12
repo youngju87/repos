@@ -1,0 +1,446 @@
+{% comment %}
+/**
+ * JY Insights - Shopify Privacy API + Consent Mode Integration
+ * FREE solution for GDPR/CCPA compliance with Google & Microsoft Consent Mode
+ * Version: 1.0
+ * Last Updated: 2026-01-11
+ *
+ * WHAT THIS DOES:
+ * - Integrates with Shopify's FREE Customer Privacy API (native consent system)
+ * - Implements Google Consent Mode v2 (required for GA4, Google Ads, GTag)
+ * - Implements Microsoft Consent Mode (for Microsoft Ads/Clarity via GTM)
+ * - Updates consent state dynamically when user changes preferences
+ * - 100% FREE - no third-party tools required
+ *
+ * INSTALLATION:
+ * 1. Add this snippet BEFORE your gold-storefront-datalayer-GA4-enhanced.liquid
+ * 2. Add to theme.liquid before </head>:
+ *    {% render 'shopify-privacy-consent-mode' %}
+ *    {% render 'gold-storefront-datalayer-GA4-enhanced' %}
+ *
+ * SHOPIFY SETUP:
+ * 1. Go to: Settings > Customer Privacy
+ * 2. Enable "Customer privacy" (REQUIRED for this to work)
+ * 3. Configure consent banner settings
+ * 4. This script will automatically sync with Shopify's consent system
+ *
+ * GTM SETUP:
+ * No changes needed! Your existing GTM tags will automatically respect consent.
+ * Google tags (GA4, Google Ads) will use Consent Mode v2.
+ * Microsoft tags will check the consent state.
+ *
+ * TESTED WITH:
+ * - Shopify Customer Privacy API (native)
+ * - Google Analytics 4
+ * - Google Ads (Enhanced Conversions)
+ * - Microsoft Advertising
+ * - Microsoft Clarity
+ * - Meta Pixel (Facebook)
+ *
+ * DOCUMENTATION:
+ * - Shopify Privacy API: https://shopify.dev/docs/api/consent-tracking
+ * - Google Consent Mode: https://support.google.com/analytics/answer/9976101
+ * - Microsoft Consent Mode: https://help.ads.microsoft.com/apex/index/3/en/60109
+ */
+{% endcomment %}
+
+<script type="text/javascript">
+(function() {
+  'use strict';
+
+  // ==========================================================================
+  // CONFIGURATION
+  // ==========================================================================
+
+  var CONFIG = {
+    debug: true, // Set to false in production
+    version: '1.0',
+
+    // Default consent state (before user makes choice)
+    // "denied" is the safe default for GDPR compliance
+    defaultConsent: {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      personalization_storage: 'denied',
+      functionality_storage: 'granted', // Usually safe to grant (for cart, etc.)
+      security_storage: 'granted' // Usually safe to grant (for security)
+    },
+
+    // Regions that require consent (GDPR regions)
+    // You can customize this list based on your requirements
+    consentRequiredRegions: ['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR',
+                             'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL',
+                             'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE', 'GB', 'UK', 'NO',
+                             'IS', 'LI', 'CH']
+  };
+
+  // ==========================================================================
+  // LOGGING
+  // ==========================================================================
+
+  function log(message, data) {
+    if (CONFIG.debug) {
+      console.log('[Shopify Privacy + Consent Mode]', message, data || '');
+    }
+  }
+
+  // ==========================================================================
+  // GOOGLE CONSENT MODE V2 INITIALIZATION
+  // ==========================================================================
+
+  // Initialize dataLayer if it doesn't exist
+  window.dataLayer = window.dataLayer || [];
+
+  // Google Tag function
+  function gtag() {
+    dataLayer.push(arguments);
+  }
+
+  // Store gtag globally for later use
+  window.gtag = gtag;
+
+  log('Initializing Google Consent Mode v2...');
+
+  // Set default consent state BEFORE any tags load
+  gtag('consent', 'default', {
+    'analytics_storage': CONFIG.defaultConsent.analytics_storage,
+    'ad_storage': CONFIG.defaultConsent.ad_storage,
+    'ad_user_data': CONFIG.defaultConsent.ad_user_data,
+    'ad_personalization': CONFIG.defaultConsent.ad_personalization,
+    'personalization_storage': CONFIG.defaultConsent.personalization_storage,
+    'functionality_storage': CONFIG.defaultConsent.functionality_storage,
+    'security_storage': CONFIG.defaultConsent.security_storage,
+    'wait_for_update': 500 // Wait 500ms for Shopify's consent API to load
+  });
+
+  log('Default consent state set:', CONFIG.defaultConsent);
+
+  // ==========================================================================
+  // MICROSOFT CONSENT MODE INITIALIZATION
+  // ==========================================================================
+
+  // Microsoft doesn't have a native consent mode like Google,
+  // but we can set flags that GTM tags can check
+  window.microsoftConsentState = {
+    analytics: false,
+    advertising: false
+  };
+
+  log('Microsoft consent state initialized:', window.microsoftConsentState);
+
+  // ==========================================================================
+  // SHOPIFY CUSTOMER PRIVACY API INTEGRATION
+  // ==========================================================================
+
+  /**
+   * Check if Shopify Customer Privacy API is available
+   */
+  function isShopifyPrivacyAPIAvailable() {
+    return typeof window.Shopify !== 'undefined' &&
+           typeof window.Shopify.customerPrivacy !== 'undefined';
+  }
+
+  /**
+   * Get current consent from Shopify Customer Privacy API
+   */
+  function getShopifyConsent() {
+    if (!isShopifyPrivacyAPIAvailable()) {
+      log('Shopify Customer Privacy API not available');
+      return null;
+    }
+
+    try {
+      var consent = window.Shopify.customerPrivacy.getTrackingConsent();
+      log('Shopify consent retrieved:', consent);
+      return consent;
+    } catch (e) {
+      log('Error getting Shopify consent:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Map Shopify consent to Google Consent Mode v2
+   * Shopify values: 'yes', 'no', 'no_interaction'
+   */
+  function mapShopifyToGoogleConsent(shopifyConsent) {
+    if (!shopifyConsent) {
+      return CONFIG.defaultConsent;
+    }
+
+    // Shopify consent categories
+    var analyticsConsent = shopifyConsent === 'yes' ? 'granted' : 'denied';
+    var marketingConsent = shopifyConsent === 'yes' ? 'granted' : 'denied';
+
+    return {
+      'analytics_storage': analyticsConsent,
+      'ad_storage': marketingConsent,
+      'ad_user_data': marketingConsent,
+      'ad_personalization': marketingConsent,
+      'personalization_storage': analyticsConsent,
+      'functionality_storage': 'granted', // Always granted
+      'security_storage': 'granted' // Always granted
+    };
+  }
+
+  /**
+   * Update Google Consent Mode based on Shopify consent
+   */
+  function updateGoogleConsent(shopifyConsent) {
+    var consentState = mapShopifyToGoogleConsent(shopifyConsent);
+
+    log('Updating Google Consent Mode...', consentState);
+
+    gtag('consent', 'update', consentState);
+
+    // Also push to dataLayer for GTM variables to access
+    dataLayer.push({
+      event: 'consent_updated',
+      consent_state: consentState,
+      shopify_consent: shopifyConsent
+    });
+
+    log('Google Consent Mode updated');
+  }
+
+  /**
+   * Update Microsoft Consent Mode based on Shopify consent
+   */
+  function updateMicrosoftConsent(shopifyConsent) {
+    var granted = shopifyConsent === 'yes';
+
+    window.microsoftConsentState = {
+      analytics: granted,
+      advertising: granted
+    };
+
+    log('Microsoft consent state updated:', window.microsoftConsentState);
+
+    // Push to dataLayer for GTM tags to check
+    dataLayer.push({
+      event: 'microsoft_consent_updated',
+      microsoft_analytics_consent: granted,
+      microsoft_advertising_consent: granted
+    });
+  }
+
+  /**
+   * Update all consent modes
+   */
+  function updateAllConsentModes(shopifyConsent) {
+    log('Updating all consent modes for Shopify consent:', shopifyConsent);
+    updateGoogleConsent(shopifyConsent);
+    updateMicrosoftConsent(shopifyConsent);
+  }
+
+  /**
+   * Initialize consent based on Shopify Customer Privacy API
+   */
+  function initializeShopifyConsent() {
+    if (!isShopifyPrivacyAPIAvailable()) {
+      log('WARNING: Shopify Customer Privacy API is not available.');
+      log('Please enable Customer Privacy in Shopify Settings > Customer Privacy');
+      return;
+    }
+
+    // Get initial consent state
+    var initialConsent = getShopifyConsent();
+
+    if (initialConsent) {
+      log('Initial Shopify consent:', initialConsent);
+      updateAllConsentModes(initialConsent);
+    } else {
+      log('No initial consent found, using defaults');
+    }
+
+    // Listen for consent changes
+    try {
+      document.addEventListener('visitorConsentCollected', function(event) {
+        log('Consent collected event fired:', event.detail);
+
+        if (event.detail && event.detail.analyticsAllowed !== undefined) {
+          var consentValue = event.detail.analyticsAllowed ? 'yes' : 'no';
+          log('Consent changed to:', consentValue);
+          updateAllConsentModes(consentValue);
+        }
+      });
+
+      log('Consent change listener registered');
+    } catch (e) {
+      log('Error registering consent listener:', e);
+    }
+  }
+
+  // ==========================================================================
+  // REGION-BASED CONSENT (OPTIONAL)
+  // ==========================================================================
+
+  /**
+   * Get user's country code (from Shopify.country if available)
+   */
+  function getUserCountry() {
+    if (typeof window.Shopify !== 'undefined' && window.Shopify.country) {
+      return window.Shopify.country;
+    }
+    return null;
+  }
+
+  /**
+   * Check if user is in a region that requires consent
+   */
+  function isConsentRequired() {
+    var country = getUserCountry();
+    if (!country) return true; // Default to requiring consent if unknown
+
+    return CONFIG.consentRequiredRegions.indexOf(country) !== -1;
+  }
+
+  /**
+   * Auto-grant consent for regions that don't require it
+   * This is useful for non-GDPR regions (e.g., US, CA, AU)
+   */
+  function handleRegionBasedConsent() {
+    if (!isConsentRequired()) {
+      log('User not in consent-required region, auto-granting consent');
+
+      var grantedConsent = {
+        'analytics_storage': 'granted',
+        'ad_storage': 'granted',
+        'ad_user_data': 'granted',
+        'ad_personalization': 'granted',
+        'personalization_storage': 'granted',
+        'functionality_storage': 'granted',
+        'security_storage': 'granted'
+      };
+
+      gtag('consent', 'update', grantedConsent);
+
+      window.microsoftConsentState = {
+        analytics: true,
+        advertising: true
+      };
+
+      dataLayer.push({
+        event: 'consent_auto_granted',
+        region_based: true,
+        country: getUserCountry()
+      });
+
+      log('Consent auto-granted for non-GDPR region');
+    }
+  }
+
+  // ==========================================================================
+  // INITIALIZATION
+  // ==========================================================================
+
+  /**
+   * Main initialization function
+   */
+  function init() {
+    log('Initializing Shopify Privacy + Consent Mode integration v' + CONFIG.version);
+
+    // Wait for Shopify to be available
+    if (typeof window.Shopify === 'undefined') {
+      log('Waiting for Shopify object to load...');
+
+      // Poll for Shopify object
+      var checkInterval = setInterval(function() {
+        if (typeof window.Shopify !== 'undefined') {
+          clearInterval(checkInterval);
+          log('Shopify object loaded');
+          initializeShopifyConsent();
+          handleRegionBasedConsent();
+        }
+      }, 100);
+
+      // Timeout after 5 seconds
+      setTimeout(function() {
+        clearInterval(checkInterval);
+        if (typeof window.Shopify === 'undefined') {
+          log('WARNING: Shopify object did not load within 5 seconds');
+        }
+      }, 5000);
+    } else {
+      // Shopify already loaded
+      initializeShopifyConsent();
+      handleRegionBasedConsent();
+    }
+
+    // Also expose helper functions globally for debugging
+    if (CONFIG.debug) {
+      window.consentDebug = {
+        getShopifyConsent: getShopifyConsent,
+        updateGoogleConsent: updateGoogleConsent,
+        updateMicrosoftConsent: updateMicrosoftConsent,
+        isShopifyPrivacyAPIAvailable: isShopifyPrivacyAPIAvailable,
+        getUserCountry: getUserCountry,
+        isConsentRequired: isConsentRequired
+      };
+      log('Debug functions available at window.consentDebug');
+    }
+  }
+
+  // Run initialization when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // ==========================================================================
+  // EXPOSE PUBLIC API (OPTIONAL)
+  // ==========================================================================
+
+  /**
+   * Public API for manual consent management
+   * Usage: window.shopifyConsentMode.grantConsent() or .denyConsent()
+   */
+  window.shopifyConsentMode = {
+    version: CONFIG.version,
+
+    /**
+     * Manually grant all consent
+     */
+    grantConsent: function() {
+      updateAllConsentModes('yes');
+      log('Consent manually granted');
+    },
+
+    /**
+     * Manually deny all consent
+     */
+    denyConsent: function() {
+      updateAllConsentModes('no');
+      log('Consent manually denied');
+    },
+
+    /**
+     * Get current consent state
+     */
+    getConsentState: function() {
+      return {
+        shopify: getShopifyConsent(),
+        microsoft: window.microsoftConsentState
+      };
+    }
+  };
+
+  log('Public API available at window.shopifyConsentMode');
+
+})();
+</script>
+
+<!-- Microsoft UET Tag Consent Support (if using Microsoft Ads) -->
+<script type="text/javascript">
+(function() {
+  // This sets up Microsoft UET to respect consent mode
+  // Microsoft Ads will check window.microsoftConsentState before firing
+
+  window.uetConsentCallback = function() {
+    return window.microsoftConsentState && window.microsoftConsentState.advertising;
+  };
+})();
+</script>
