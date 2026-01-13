@@ -19,6 +19,9 @@ The **Gold Plus Enhanced v2.0** package is a comprehensive upgrade to your Shopi
 | [gold-storefront-datalayer-GA4-enhanced.liquid](gold-storefront-datalayer-GA4-enhanced.liquid) | 56 KB | Enhanced storefront tracking with RFM metrics, product handles, category data |
 | [gold-checkout-pixel-GA4-enhanced.js](gold-checkout-pixel-GA4-enhanced.js) | 31 KB | Enhanced checkout tracking with full PII, order metadata, payment details |
 | gold-gtm-container-ga4-enhanced.json | TBD | Enhanced GTM container with 35 tags, 50+ variables, 20+ triggers |
+| **[shopify-privacy-consent-mode-v2.0-modern-api.liquid](shopify-privacy-consent-mode-v2.0-modern-api.liquid)** | **25 KB** | **Consent Mode v2.1 - Shopify Privacy API integration** |
+| **[shopify-cookie-preferences-link.liquid](shopify-cookie-preferences-link.liquid)** | **3 KB** | **Cookie preference center trigger** |
+| **[consent-mode-container-v2.1.json](consent-mode-container-v2.1.json)** | **8 KB** | **GTM consent variables & triggers** |
 
 ### Documentation Files
 
@@ -27,6 +30,9 @@ The **Gold Plus Enhanced v2.0** package is a comprehensive upgrade to your Shopi
 | [solution-design-reference-enhanced.md](solution-design-reference-enhanced.md) | 60+ | Complete technical documentation, event catalog, parameter dictionary |
 | [QUICK-START-ENHANCED.md](QUICK-START-ENHANCED.md) | 10 | 30-minute quick start guide with verification steps |
 | [CHANGELOG-ENHANCED.md](CHANGELOG-ENHANCED.md) | 25 | Detailed list of all changes vs. v1.4/v1.7 |
+| **[CONSENT-MODE-V2.1-UPDATE.md](CONSENT-MODE-V2.1-UPDATE.md)** | **20** | **Complete consent mode v2.1 documentation** |
+| **[gtm-consent-mode-setup.md](gtm-consent-mode-setup.md)** | **5** | **GTM consent configuration guide** |
+| [GA4_COMPLIANCE_SUMMARY.md](GA4_COMPLIANCE_SUMMARY.md) | 15 | GA4 & Consent Mode compliance overview |
 | MIGRATION-GUIDE-ENHANCED.md | TBD | Step-by-step migration strategy |
 | IMPLEMENTATION-GUIDE-ENHANCED.md | TBD | Detailed implementation procedures |
 
@@ -65,6 +71,25 @@ The **Gold Plus Enhanced v2.0** package is a comprehensive upgrade to your Shopi
 - ✅ **View Cart:** Added cart_type ('page' vs 'drawer'), trigger ('auto' vs 'manual')
 - ✅ **Checkout Events:** Enhanced with full order context, payment/shipping details
 - ✅ **Purchase:** Comprehensive user_data with PII, dedicated order_data object
+
+### Consent Management (v2.1) **NEW**
+
+- ✅ **Google Consent Mode v2:** All 7 required consent parameters
+- ✅ **Microsoft Consent Mode:** Dual consent tracking for Microsoft platforms
+- ✅ **Shopify Privacy API:** Modern `currentVisitorConsent()` integration
+- ✅ **Event-Driven:** Real-time consent updates via `visitorConsentCollected`
+- ✅ **Performance Optimized:** 2-second polling (reduced from 500ms)
+- ✅ **GDPR/CCPA Compliant:** Denied by default, configurable `sale_of_data` behavior
+- ✅ **GPC Support:** Auto-deny on Global Privacy Control signal
+- ✅ **Preference Center:** Footer link integration with `privacyBanner.showPreferences()`
+- ✅ **GTM Pre-Configured:** 12 variables + 6 triggers included
+- ✅ **Returning User Optimization:** Prevents double-event issues with 200ms delay
+
+**Consent Events:**
+- `consent_default` - Initial state (denied or stored)
+- `consent_updated` - User changes preferences
+- `microsoft_consent_updated` - Microsoft-specific
+- `consent_gpc_detected` - GPC signal detected
 
 ---
 

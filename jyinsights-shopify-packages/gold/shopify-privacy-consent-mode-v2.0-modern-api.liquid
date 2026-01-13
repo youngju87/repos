@@ -1,0 +1,578 @@
+{% comment %}
+/**
+ * JY Insights - Shopify Privacy API + Consent Mode Integration
+ * Version: 2.1 (Optimized & Configurable)
+ * Last Updated: 2026-01-12
+ *
+ * WHAT'S NEW IN v2.1:
+ * - Removed unnecessary event listeners (down to 1 official event)
+ * - Configurable polling interval (default: 2 seconds, was 500ms)
+ * - Quiet logging - only logs when consent actually changes
+ * - Config toggle: sale_of_data can follow marketing or use Shopify logic
+ * - Much more efficient and less noisy
+ *
+ * KEY FEATURES:
+ * - Uses modern Shopify.customerPrivacy.currentVisitorConsent() API
+ * - No token decoding - direct API access
+ * - Event-driven with optional backup polling
+ * - Configurable sale_of_data behavior
+ *
+ * REQUIREMENTS:
+ * 1. Add loadFeatures script BEFORE this in theme.liquid:
+ *    <script>
+ *      if (window.Shopify && window.Shopify.loadFeatures) {
+ *        window.Shopify.loadFeatures([{
+ *          name: 'consent-tracking-api',
+ *          version: '0.1'
+ *        }]);
+ *      }
+ *    </script>
+ *
+ * 2. Then add this snippet:
+ *    {% render 'shopify-privacy-consent-mode-v2.0-modern-api' %}
+ *    {% render 'gold-storefront-datalayer-GA4-enhanced' %}
+ *
+ * CONFIGURATION:
+ * - saleOfDataFollowsMarketing: true/false - tie sale_of_data to marketing
+ * - pollingInterval: milliseconds (0 to disable polling)
+ * - debug: true/false - enable console logging
+ */
+{% endcomment %}
+
+<script type="text/javascript">
+(function() {
+  'use strict';
+
+  // ==========================================================================
+  // CONFIGURATION
+  // ==========================================================================
+
+  var CONFIG = {
+    debug: true,
+    version: '2.1',
+
+    // Sale of Data Behavior
+    // Set to true: sale_of_data follows marketing consent (both granted/denied together)
+    // Set to false: sale_of_data uses Shopify's independent logic (CCPA opt-out based)
+    saleOfDataFollowsMarketing: true,
+
+    // Primary Shopify consent event (only one documented)
+    consentEvent: 'visitorConsentCollected',
+
+    // Polling interval (ms) - backup mechanism to catch changes
+    // Set to 0 to disable polling (event-only mode)
+    pollingInterval: 2000,  // Check every 2 seconds instead of 500ms
+
+    defaultConsent: {
+      analytics_storage: 'denied',
+      ad_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      personalization_storage: 'denied',
+      functionality_storage: 'granted',
+      security_storage: 'granted'
+    }
+  };
+
+  var lastConsentState = null;
+  var consentInitialized = false;
+
+  // ==========================================================================
+  // LOGGING
+  // ==========================================================================
+
+  function log() {
+    if (CONFIG.debug && typeof console !== 'undefined') {
+      console.log('[Shopify Consent v2.0]', Array.prototype.slice.call(arguments).join(' '));
+    }
+  }
+
+  // ==========================================================================
+  // GOOGLE CONSENT MODE v2
+  // ==========================================================================
+
+  function initializeGoogleConsentDefaults() {
+    log('🚀 Initializing Google Consent Mode v2...');
+
+    // Ensure dataLayer exists (create if needed - GTM/GA will use this)
+    window.dataLayer = window.dataLayer || [];
+
+    // Immediately push default consent to dataLayer
+    window.dataLayer.push({
+      event: 'consent_default',
+      consent_state: CONFIG.defaultConsent,
+      analytics_consent: false,
+      marketing_consent: false,
+      preferences_consent: false,
+      sale_of_data_consent: false,
+      consent_source: 'default'
+    });
+
+    log('✅ consent_default pushed to dataLayer');
+
+    // Wait for gtag to be available for gtag consent API
+    var waitForGtag = setInterval(function() {
+      if (typeof window.gtag === 'function') {
+        clearInterval(waitForGtag);
+
+        log('✅ gtag ready - setting consent defaults');
+
+        // Set consent defaults via gtag
+        window.gtag('consent', 'default', Object.assign({}, CONFIG.defaultConsent, {
+          wait_for_update: 500
+        }));
+
+        log('✅ gtag consent defaults set');
+      }
+    }, 50);
+
+    // Timeout after 5 seconds
+    setTimeout(function() {
+      clearInterval(waitForGtag);
+      if (typeof window.gtag !== 'function') {
+        log('⚠️ gtag never became available (dataLayer still pushed)');
+      }
+    }, 5000);
+  }
+
+  function initializeMicrosoftConsent() {
+    window.microsoftConsentState = {
+      analytics: false,
+      advertising: false
+    };
+    log('✅ Microsoft consent initialized');
+  }
+
+  // ==========================================================================
+  // SHOPIFY CONSENT API
+  // ==========================================================================
+
+  function getConsentFromShopify() {
+    try {
+      if (!window.Shopify || !window.Shopify.customerPrivacy) {
+        log('⚠️ Shopify.customerPrivacy not available');
+        return null;
+      }
+
+      if (typeof window.Shopify.customerPrivacy.currentVisitorConsent !== 'function') {
+        log('⚠️ currentVisitorConsent() method not available');
+        return null;
+      }
+
+      var consent = window.Shopify.customerPrivacy.currentVisitorConsent();
+
+      // Check if we have actual consent values (not empty strings)
+      if (!consent || (consent.analytics === '' && consent.marketing === '' && consent.preferences === '')) {
+        log('⚠️ No consent collected yet');
+        return null;
+      }
+
+      var analyticsGranted = consent.analytics === 'yes';
+      var marketingGranted = consent.marketing === 'yes';
+      var preferencesGranted = consent.preferences === 'yes';
+
+      // Determine sale_of_data based on config
+      var saleOfDataGranted;
+      if (CONFIG.saleOfDataFollowsMarketing) {
+        // Mirror marketing consent
+        saleOfDataGranted = marketingGranted;
+      } else {
+        // Use Shopify's independent logic (CCPA opt-out based)
+        saleOfDataGranted = consent.sale_of_data !== 'no';
+      }
+
+      return {
+        analytics: analyticsGranted,
+        marketing: marketingGranted,
+        preferences: preferencesGranted,
+        sale_of_data: saleOfDataGranted,
+        source: 'shopify_api',
+        rawConsent: consent
+      };
+
+    } catch (e) {
+      log('❌ Error getting consent:', e);
+      return null;
+    }
+  }
+
+  // ==========================================================================
+  // CONSENT UPDATES
+  // ==========================================================================
+
+  function mapShopifyToGoogleConsent(consent) {
+    if (!consent) {
+      return CONFIG.defaultConsent;
+    }
+
+    return {
+      'analytics_storage': consent.analytics ? 'granted' : 'denied',
+      'ad_storage': consent.marketing ? 'granted' : 'denied',
+      'ad_user_data': consent.marketing ? 'granted' : 'denied',
+      'ad_personalization': consent.marketing ? 'granted' : 'denied',
+      'personalization_storage': consent.preferences ? 'granted' : 'denied',
+      'functionality_storage': 'granted',
+      'security_storage': 'granted'
+    };
+  }
+
+  function updateGoogleConsent(consent) {
+    var consentState = mapShopifyToGoogleConsent(consent);
+
+    log('🔄 Updating Google Consent:',
+        'analytics=' + consentState.analytics_storage,
+        'ads=' + consentState.ad_storage);
+
+    if (typeof window.gtag === 'function') {
+      window.gtag('consent', 'update', consentState);
+    } else {
+      log('⚠️ gtag function not available');
+    }
+
+    if (typeof window.dataLayer !== 'undefined') {
+      window.dataLayer.push({
+        event: 'consent_updated',
+        consent_state: consentState,
+        analytics_consent: consent ? consent.analytics : false,
+        marketing_consent: consent ? consent.marketing : false,
+        preferences_consent: consent ? consent.preferences : false,
+        sale_of_data_consent: consent ? consent.sale_of_data : false,
+        consent_source: consent ? consent.source : 'default'
+      });
+      log('✅ Consent pushed to dataLayer');
+    } else {
+      log('⚠️ dataLayer not available');
+    }
+  }
+
+  function updateMicrosoftConsent(consent) {
+    var analyticsGranted = consent ? consent.analytics : false;
+    var marketingGranted = consent ? consent.marketing : false;
+
+    window.microsoftConsentState = {
+      analytics: analyticsGranted,
+      advertising: marketingGranted
+    };
+
+    if (typeof window.dataLayer !== 'undefined') {
+      window.dataLayer.push({
+        event: 'microsoft_consent_updated',
+        microsoft_analytics_consent: analyticsGranted,
+        microsoft_advertising_consent: marketingGranted
+      });
+    }
+
+    log('✅ Microsoft consent updated');
+  }
+
+  function updateAllConsentModes(consent) {
+    if (!consent) {
+      log('⚠️ No consent to update');
+      return;
+    }
+
+    log('🔄 Updating all consent modes');
+    updateGoogleConsent(consent);
+    updateMicrosoftConsent(consent);
+    consentInitialized = true;
+  }
+
+  // ==========================================================================
+  // EVENT-DRIVEN MONITORING
+  // ==========================================================================
+
+  function handleConsentChange() {
+    var consent = getConsentFromShopify();
+
+    if (!consent) {
+      return;
+    }
+
+    // Create state signature to detect changes
+    var currentState = consent.analytics + '|' + consent.marketing + '|' + consent.preferences + '|' + consent.sale_of_data;
+
+    if (currentState !== lastConsentState) {
+      log('🔔 Consent changed:', lastConsentState || 'initial', '->', currentState);
+      log('📊 Values:',
+          'analytics=' + consent.analytics,
+          'marketing=' + consent.marketing,
+          'preferences=' + consent.preferences,
+          'sale_of_data=' + consent.sale_of_data,
+          (CONFIG.saleOfDataFollowsMarketing ? '(following marketing)' : '(independent)'));
+      lastConsentState = currentState;
+      updateAllConsentModes(consent);
+    }
+  }
+
+  function setupEventListeners() {
+    log('👂 Setting up event listener for:', CONFIG.consentEvent);
+
+    // Listen for the official Shopify consent event
+    document.addEventListener(CONFIG.consentEvent, function(e) {
+      log('🔔 Event fired:', CONFIG.consentEvent);
+      handleConsentChange();
+    });
+
+    log('✅ Event listener active');
+  }
+
+  // ==========================================================================
+  // GPC DETECTION
+  // ==========================================================================
+
+  function checkGlobalPrivacyControl() {
+    if (typeof navigator.globalPrivacyControl !== 'undefined' && navigator.globalPrivacyControl === true) {
+      log('🚫 GPC Signal Detected');
+      return true;
+    }
+
+    if (navigator.doNotTrack === '1' || window.doNotTrack === '1') {
+      log('🚫 DNT Signal Detected');
+      return true;
+    }
+
+    return false;
+  }
+
+  function handleGPCSignal() {
+    var hasGPCSignal = checkGlobalPrivacyControl();
+    if (hasGPCSignal) {
+      log('Auto-denying consent per GPC/DNT');
+      updateAllConsentModes({
+        analytics: false,
+        marketing: false,
+        preferences: false,
+        sale_of_data: false,
+        source: 'gpc'
+      });
+
+      if (typeof window.dataLayer !== 'undefined') {
+        window.dataLayer.push({
+          event: 'consent_gpc_detected',
+          gpc_signal: true,
+          consent_auto_denied: true
+        });
+      }
+
+      return true;
+    }
+    return false;
+  }
+
+  // ==========================================================================
+  // INITIALIZATION
+  // ==========================================================================
+
+  function waitForShopifyAPI(callback, maxWait) {
+    var startTime = Date.now();
+    var maxWaitTime = maxWait || 10000;
+
+    log('⏳ Waiting for Shopify Customer Privacy API...');
+
+    var checkInterval = setInterval(function() {
+      var hasShopify = typeof window.Shopify !== 'undefined';
+      var hasPrivacy = hasShopify && typeof window.Shopify.customerPrivacy !== 'undefined';
+      var hasMethod = hasPrivacy && typeof window.Shopify.customerPrivacy.currentVisitorConsent === 'function';
+
+      if (hasMethod) {
+        clearInterval(checkInterval);
+        var elapsed = Date.now() - startTime;
+        log('✅ API ready after', elapsed + 'ms');
+        callback(true);
+      } else if (Date.now() - startTime > maxWaitTime) {
+        clearInterval(checkInterval);
+        log('⏱️ Timeout after', maxWaitTime + 'ms');
+        log('  - Has Shopify?', hasShopify);
+        log('  - Has customerPrivacy?', hasPrivacy);
+        log('  - Has currentVisitorConsent()?', hasMethod);
+        callback(false);
+      }
+    }, 100);
+  }
+
+  function init() {
+    log('🚀 Initializing v' + CONFIG.version);
+
+    // Check for GPC first
+    if (handleGPCSignal()) {
+      log('GPC/DNT detected - consent denied');
+      // Still initialize consent modes with denied state
+      initializeGoogleConsentDefaults();
+      initializeMicrosoftConsent();
+      return;
+    }
+
+    // Wait for Shopify API to be ready BEFORE setting consent defaults
+    waitForShopifyAPI(function(ready) {
+      if (!ready) {
+        log('⚠️ Shopify Customer Privacy API not available');
+        // Fallback: initialize with defaults
+        initializeGoogleConsentDefaults();
+        initializeMicrosoftConsent();
+        return;
+      }
+
+      log('✅ Shopify Customer Privacy API ready');
+
+      // Wait a moment for consent values to be fully loaded
+      // Sometimes API is ready but values aren't populated yet
+      setTimeout(function() {
+        // Get initial consent (from cookie for returning users)
+        var initialConsent = getConsentFromShopify();
+
+        if (initialConsent) {
+          // RETURNING USER: Set defaults to match stored consent
+          log('✅ Initial consent found (returning user or already granted)');
+
+        // Set the initial state signature
+        lastConsentState = initialConsent.analytics + '|' + initialConsent.marketing + '|' +
+                          initialConsent.preferences + '|' + initialConsent.sale_of_data;
+
+        // Initialize consent modes with stored values
+        initializeMicrosoftConsent();
+
+        // Set Google defaults to match stored consent (not denied)
+        var storedConsentDefaults = mapShopifyToGoogleConsent(initialConsent);
+        window.dataLayer = window.dataLayer || [];
+
+        // Push consent_default with stored values
+        window.dataLayer.push({
+          event: 'consent_default',
+          consent_state: storedConsentDefaults,
+          analytics_consent: initialConsent.analytics,
+          marketing_consent: initialConsent.marketing,
+          preferences_consent: initialConsent.preferences,
+          sale_of_data_consent: initialConsent.sale_of_data,
+          consent_source: 'stored'
+        });
+
+        // Set gtag defaults
+        if (typeof window.gtag === 'function') {
+          window.gtag('consent', 'default', Object.assign({}, storedConsentDefaults, {
+            wait_for_update: 500
+          }));
+        }
+
+        // No need to call updateAllConsentModes - defaults already set
+
+        log('📊 Loaded consent:',
+            'analytics=' + initialConsent.analytics,
+            'marketing=' + initialConsent.marketing,
+            'preferences=' + initialConsent.preferences,
+            'sale_of_data=' + initialConsent.sale_of_data);
+        } else {
+          // NEW USER: Initialize with denied defaults
+          log('⚠️ No initial consent - setting denied defaults (GDPR-safe)');
+          initializeGoogleConsentDefaults();
+          initializeMicrosoftConsent();
+        }
+
+        // Set up event-driven monitoring
+        setupEventListeners();
+
+        // Optional polling as backup
+        if (CONFIG.pollingInterval > 0) {
+          log('👁️ Polling enabled (every ' + CONFIG.pollingInterval + 'ms)');
+          setInterval(handleConsentChange, CONFIG.pollingInterval);
+        } else {
+          log('📡 Event-only mode (no polling)');
+        }
+
+        log('✅ Monitoring active');
+      }, 200); // Wait 200ms for consent values to populate
+    });
+
+    // Expose debug functions
+    if (CONFIG.debug) {
+      window.consentDebug = {
+        getConsent: function() {
+          return window.Shopify?.customerPrivacy?.currentVisitorConsent();
+        },
+        checkNow: handleConsentChange,
+        currentState: function() {
+          return {
+            shopify: getConsentFromShopify(),
+            initialized: consentInitialized,
+            lastState: lastConsentState
+          };
+        },
+        grant: function() {
+          // Simulate granting all consent
+          updateAllConsentModes({
+            analytics: true,
+            marketing: true,
+            preferences: true,
+            sale_of_data: true,
+            source: 'manual'
+          });
+        },
+        deny: function() {
+          updateAllConsentModes({
+            analytics: false,
+            marketing: false,
+            preferences: false,
+            sale_of_data: false,
+            source: 'manual'
+          });
+        },
+        testAPI: function() {
+          log('=== API Test ===');
+          log('Config: saleOfDataFollowsMarketing =', CONFIG.saleOfDataFollowsMarketing);
+          log('Shopify.customerPrivacy:', window.Shopify?.customerPrivacy);
+          log('currentVisitorConsent():', window.Shopify?.customerPrivacy?.currentVisitorConsent());
+          log('shouldShowBanner():', window.Shopify?.customerPrivacy?.shouldShowBanner());
+          log('analyticsProcessingAllowed():', window.Shopify?.customerPrivacy?.analyticsProcessingAllowed());
+          log('marketingAllowed():', window.Shopify?.customerPrivacy?.marketingAllowed());
+          log('saleOfDataAllowed():', window.Shopify?.customerPrivacy?.saleOfDataAllowed());
+        },
+        setFollowMarketing: function(value) {
+          CONFIG.saleOfDataFollowsMarketing = value;
+          log('🔧 saleOfDataFollowsMarketing set to:', value);
+          handleConsentChange(); // Re-check consent with new setting
+        }
+      };
+      log('🛠️ Debug available at window.consentDebug');
+    }
+
+    // Public API
+    window.shopifyConsentMode = {
+      version: CONFIG.version,
+      grantConsent: function() {
+        updateAllConsentModes({
+          analytics: true,
+          marketing: true,
+          preferences: true,
+          sale_of_data: true,
+          source: 'api'
+        });
+      },
+      denyConsent: function() {
+        updateAllConsentModes({
+          analytics: false,
+          marketing: false,
+          preferences: false,
+          sale_of_data: false,
+          source: 'api'
+        });
+      },
+      getConsentState: function() {
+        return {
+          shopify: getConsentFromShopify(),
+          microsoft: window.microsoftConsentState,
+          initialized: consentInitialized
+        };
+      }
+    };
+
+    log('✅ Ready');
+  }
+
+  // Run initialization
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+</script>

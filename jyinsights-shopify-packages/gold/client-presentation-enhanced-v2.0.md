@@ -148,6 +148,54 @@ Position 11+ → 2% conversion rate
 
 ---
 
+### Advanced Consent Management (v2.1)
+**Shopify Privacy API + Google Consent Mode v2 + Microsoft Consent Mode**
+
+**What's Included:**
+- **Shopify Privacy API Integration**: Uses Shopify's native `customerPrivacy` API for consent management
+- **Google Consent Mode v2**: Full compliance with all 7 consent parameters
+- **Microsoft Consent Mode**: Dual consent tracking for Microsoft advertising platforms
+- **Event-Driven Architecture**: Real-time consent updates with 200ms initialization
+- **Returning User Optimization**: Detects stored consent to prevent double-event issues
+
+**Key Features:**
+```javascript
+// Consent States Tracked:
+✅ analytics_storage     (Google Analytics)
+✅ ad_storage           (Google Ads remarketing)
+✅ ad_user_data         (Google Ads personalization)
+✅ ad_personalization   (Google Ads personalized ads)
+✅ personalization_storage (Site personalization)
+✅ functionality_storage (Always granted - essential)
+✅ security_storage     (Always granted - essential)
+```
+
+**Consent Events:**
+1. `consent_default` - Initial consent state (denied or stored)
+2. `consent_updated` - When user changes consent preferences
+3. `microsoft_consent_updated` - Microsoft-specific consent tracking
+4. `consent_gpc_detected` - Global Privacy Control auto-deny
+
+**Business Benefits:**
+- **100% GDPR Compliant**: Denied by default, granted only after explicit consent
+- **CCPA Ready**: Configurable `sale_of_data` behavior (follows marketing or independent)
+- **GPC Support**: Automatically respects Global Privacy Control signals
+- **Preference Center**: Footer link integration for easy consent management
+- **GTM Pre-Configured**: 12 consent variables + 6 consent triggers included
+
+**Performance:**
+- **2-second polling interval** (reduced from 500ms in older versions)
+- **Event-driven updates** for instant consent changes
+- **Quiet logging** - only logs when consent actually changes
+- **200ms initialization delay** - prevents double-event issues for returning users
+
+**Files Included:**
+- `shopify-privacy-consent-mode-v2.0-modern-api.liquid` (v2.1) - Main consent script
+- `shopify-cookie-preferences-link.liquid` (v1.2) - Preference center trigger
+- `consent-mode-container-v2.1.json` - GTM container with consent configuration
+
+---
+
 ### Non-Destructive Deployment
 **Zero Risk Implementation**
 

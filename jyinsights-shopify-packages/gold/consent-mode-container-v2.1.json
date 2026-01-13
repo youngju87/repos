@@ -1,0 +1,507 @@
+{
+  "exportFormatVersion": 2,
+  "exportTime": "2026-01-12 00:00:00",
+  "containerVersion": {
+    "name": "Consent Mode v2.1 - Shopify Privacy API",
+    "description": "Updated for Shopify Privacy API v2.1 integration. Includes consent_default event, all consent states (analytics, marketing, preferences, sale_of_data), and proper triggers for consent updates. Compatible with Google Consent Mode v2 and Microsoft Consent Mode.",
+    "container": {
+      "name": "Consent Mode Configuration v2.1",
+      "usageContext": [
+        "WEB"
+      ]
+    },
+    "variable": [
+      {
+        "variableId": "1",
+        "name": "DLV - consent_state",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state"
+          }
+        ],
+        "fingerprint": "1736640000001"
+      },
+      {
+        "variableId": "2",
+        "name": "DLV - analytics_consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "analytics_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736640000002"
+      },
+      {
+        "variableId": "3",
+        "name": "DLV - marketing_consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "marketing_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736640000003"
+      },
+      {
+        "variableId": "4",
+        "name": "DLV - preferences_consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "preferences_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736640000004"
+      },
+      {
+        "variableId": "5",
+        "name": "DLV - sale_of_data_consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "sale_of_data_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736640000005"
+      },
+      {
+        "variableId": "6",
+        "name": "DLV - consent_source",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_source"
+          }
+        ],
+        "fingerprint": "1736640000006"
+      },
+      {
+        "variableId": "7",
+        "name": "DLV - analytics_storage",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state.analytics_storage"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "denied"
+          }
+        ],
+        "fingerprint": "1736640000007"
+      },
+      {
+        "variableId": "8",
+        "name": "DLV - ad_storage",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state.ad_storage"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "denied"
+          }
+        ],
+        "fingerprint": "1736640000008"
+      },
+      {
+        "variableId": "9",
+        "name": "DLV - ad_user_data",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state.ad_user_data"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "denied"
+          }
+        ],
+        "fingerprint": "1736640000009"
+      },
+      {
+        "variableId": "10",
+        "name": "DLV - ad_personalization",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "consent_state.ad_personalization"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "denied"
+          }
+        ],
+        "fingerprint": "1736640000010"
+      },
+      {
+        "variableId": "11",
+        "name": "DLV - microsoft_analytics_consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "microsoft_analytics_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736640000011"
+      },
+      {
+        "variableId": "12",
+        "name": "DLV - microsoft_advertising_consent",
+        "type": "v",
+        "parameter": [
+          {
+            "type": "INTEGER",
+            "key": "dataLayerVersion",
+            "value": "2"
+          },
+          {
+            "type": "BOOLEAN",
+            "key": "setDefaultValue",
+            "value": "true"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "name",
+            "value": "microsoft_advertising_consent"
+          },
+          {
+            "type": "TEMPLATE",
+            "key": "defaultValue",
+            "value": "false"
+          }
+        ],
+        "fingerprint": "1736640000012"
+      }
+    ],
+    "trigger": [
+      {
+        "triggerId": "1",
+        "name": "CE - consent_default",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_default"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736640000013"
+      },
+      {
+        "triggerId": "2",
+        "name": "CE - consent_updated",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_updated"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736640000014"
+      },
+      {
+        "triggerId": "3",
+        "name": "CE - consent_updated - Analytics Granted",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_updated"
+              }
+            ]
+          }
+        ],
+        "filter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{DLV - analytics_consent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "true"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736640000015"
+      },
+      {
+        "triggerId": "4",
+        "name": "CE - consent_updated - Marketing Granted",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_updated"
+              }
+            ]
+          }
+        ],
+        "filter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{DLV - marketing_consent}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "true"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736640000016"
+      },
+      {
+        "triggerId": "5",
+        "name": "CE - microsoft_consent_updated",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "microsoft_consent_updated"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736640000017"
+      },
+      {
+        "triggerId": "6",
+        "name": "CE - consent_gpc_detected",
+        "type": "CUSTOM_EVENT",
+        "customEventFilter": [
+          {
+            "type": "EQUALS",
+            "parameter": [
+              {
+                "type": "TEMPLATE",
+                "key": "arg0",
+                "value": "{{_event}}"
+              },
+              {
+                "type": "TEMPLATE",
+                "key": "arg1",
+                "value": "consent_gpc_detected"
+              }
+            ]
+          }
+        ],
+        "fingerprint": "1736640000018"
+      }
+    ],
+    "fingerprint": "1736640000000"
+  }
+}

@@ -20,7 +20,54 @@ The **Gold Plus Enhanced v2.0** package is a drop-in enhancement that adds **50+
 
 ---
 
-## 🚀 Installation (3 Steps)
+## 🚀 Installation (4 Steps)
+
+### Step 0: Setup Consent Mode v2.1 (5 min) **NEW**
+
+**IMPORTANT: Do this BEFORE installing the enhanced DataLayer**
+
+1. **Add Shopify Privacy API loader to theme.liquid** (BEFORE any other scripts):
+   ```liquid
+   <script>
+     if (window.Shopify && window.Shopify.loadFeatures) {
+       window.Shopify.loadFeatures([{
+         name: 'consent-tracking-api',
+         version: '0.1'
+       }]);
+     }
+   </script>
+   ```
+
+2. **Add consent mode script** (after loadFeatures, in `<head>` or before `</body>`):
+   ```liquid
+   {% render 'shopify-privacy-consent-mode-v2.0-modern-api' %}
+   ```
+
+3. **(Optional) Add cookie preferences link** (before `</body>`):
+   ```liquid
+   {% render 'shopify-cookie-preferences-link' %}
+   ```
+
+   Then add this link in your footer:
+   ```html
+   <a href="#cookie-preference">Cookie Preferences</a>
+   ```
+
+4. **Import consent mode GTM container:**
+   ```
+   GTM Admin → Import Container
+   File: consent-mode-container-v2.1.json
+   Option: Merge
+   ```
+
+**What you get:**
+- ✅ Google Consent Mode v2 (all 7 parameters)
+- ✅ Microsoft Consent Mode
+- ✅ GDPR/CCPA compliance
+- ✅ 12 consent variables + 6 triggers in GTM
+- ✅ Automatic consent state management
+
+---
 
 ### Step 1: Install Enhanced DataLayer (10 min)
 

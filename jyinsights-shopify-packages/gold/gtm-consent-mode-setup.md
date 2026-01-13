@@ -1,6 +1,35 @@
-# GTM Consent Mode Configuration Guide
+# GTM Consent Mode Configuration Guide v2.1
 
 **Quick setup for Google & Microsoft Consent Mode in GTM**
+
+---
+
+## 🚀 Quick Start: Import Pre-Configured Container
+
+**The fastest way to set up consent mode is to import our pre-configured GTM container:**
+
+### Option 1: Import consent-mode-container-v2.1.json (RECOMMENDED)
+
+1. **Download** `consent-mode-container-v2.1.json` from the package
+2. **Open GTM** → Admin → Import Container
+3. **Choose** `consent-mode-container-v2.1.json`
+4. **Select** "Merge" (to keep existing tags) or "Overwrite" (clean install)
+5. **Import** and publish
+
+**What's Included:**
+- ✅ 12 Data Layer Variables (all consent states)
+- ✅ 6 Custom Event Triggers (consent events)
+- ✅ Pre-configured for Shopify Privacy API v2.1
+- ✅ Google Consent Mode v2 compliant
+- ✅ Microsoft Consent Mode support
+
+**Time to Complete:** 2 minutes
+
+---
+
+## 🛠️ Option 2: Manual Setup (if you prefer)
+
+If you want to create variables and triggers manually instead of importing, follow the guide below.
 
 ---
 

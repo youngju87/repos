@@ -1,7 +1,7 @@
-# GA4 Compliance Summary - Gold Storefront DataLayer v5.1
+# GA4 Compliance Summary - Gold Package v2.1
 
 ## Overview
-The `gold-storefront-datalayer-1.liquid` file has been fully upgraded to GA4 compliance while maintaining 100% backward compatibility through a dual-format approach.
+The JY Insights Gold Package has been fully upgraded to GA4 compliance while maintaining 100% backward compatibility. This includes both the data layer implementation and Google Consent Mode v2 integration.
 
 ## ✅ GA4 Compliance Checklist
 
@@ -12,6 +12,78 @@ The `gold-storefront-datalayer-1.liquid` file has been fully upgraded to GA4 com
 - ✅ Items contain all required properties (price, quantity)
 - ✅ List context included where applicable (item_list_name, item_list_id)
 - ✅ Consistent data types (strings for IDs, numbers for prices)
+- ✅ **Google Consent Mode v2 fully implemented**
+- ✅ **Microsoft Consent Mode supported**
+- ✅ **GDPR/CCPA compliant consent management**
+
+---
+
+## 🔒 Consent Mode v2 Compliance (NEW in v2.1)
+
+### Google Consent Mode v2 Requirements Met:
+
+**All 7 Required Consent Parameters:**
+```javascript
+✅ analytics_storage        // Google Analytics cookies
+✅ ad_storage              // Advertising cookies
+✅ ad_user_data            // User data for advertising
+✅ ad_personalization      // Personalized advertising
+✅ personalization_storage // Site personalization
+✅ functionality_storage   // Essential site functionality (always granted)
+✅ security_storage        // Security features (always granted)
+```
+
+**Consent Events Implemented:**
+- ✅ `consent_default` - Initial consent state (before user interaction)
+- ✅ `consent_updated` - When user changes consent preferences
+- ✅ `microsoft_consent_updated` - Microsoft-specific consent tracking
+- ✅ `consent_gpc_detected` - Global Privacy Control signal detection
+
+**Implementation:**
+```javascript
+// Example: Returning user with stored consent
+{
+  event: 'consent_default',
+  consent_state: {
+    analytics_storage: 'granted',
+    ad_storage: 'granted',
+    ad_user_data: 'granted',
+    ad_personalization: 'granted',
+    personalization_storage: 'granted',
+    functionality_storage: 'granted',
+    security_storage: 'granted'
+  },
+  analytics_consent: true,
+  marketing_consent: true,
+  preferences_consent: true,
+  sale_of_data_consent: true,
+  consent_source: 'stored'  // or 'default', 'shopify_api'
+}
+```
+
+**GTM Container Support:**
+- 12 Data Layer Variables for consent states
+- 6 Custom Event Triggers for consent events
+- Pre-configured consent initialization tags
+
+### GDPR/CCPA Compliance:
+
+**GDPR (European Union):**
+- ✅ Denied by default (no cookies until consent)
+- ✅ Explicit consent required for non-essential cookies
+- ✅ Granular consent options (analytics, marketing, preferences)
+- ✅ Easy consent withdrawal via preference center
+
+**CCPA (California/US):**
+- ✅ `sale_of_data_consent` parameter tracked
+- ✅ Configurable behavior: follow marketing OR independent
+- ✅ GPC (Global Privacy Control) auto-deny support
+- ✅ "Do Not Sell My Personal Information" link support
+
+**Files:**
+- `shopify-privacy-consent-mode-v2.0-modern-api.liquid` (v2.1)
+- `shopify-cookie-preferences-link.liquid` (v1.2)
+- `consent-mode-container-v2.1.json`
 
 ---
 

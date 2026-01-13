@@ -1,0 +1,101 @@
+{% comment %}
+  Shopify Cookie Preferences Link Handler
+  Version: 1.2
+
+  This snippet enables footer links with #cookie-preference or #cookie-preferences
+  to open Shopify's native cookie preference center modal by calling privacyBanner.showPreferences().
+
+  Usage:
+  1. Add this snippet to your theme.liquid before </body>
+  2. Add a link in your footer: <a href="#cookie-preference">Cookie Preferences</a>
+{% endcomment %}
+
+<script>
+(function() {
+  'use strict';
+
+  var CONFIG = {
+    debug: true,
+    version: '1.2',
+    maxRetries: 10,
+    retryInterval: 500
+  };
+
+  function log(message, data) {
+    if (!CONFIG.debug) return;
+    console.log('[Cookie Preferences v' + CONFIG.version + '] ' + message, data || '');
+  }
+
+  function handlePreferenceLinkClick(e) {
+    e.preventDefault();
+    log('Preference link clicked');
+
+    // Check if privacyBanner exists and has showPreferences method
+    if (typeof window.privacyBanner !== 'undefined' &&
+        typeof window.privacyBanner.showPreferences === 'function') {
+      log('Calling privacyBanner.showPreferences()');
+      window.privacyBanner.showPreferences();
+      return;
+    }
+
+    // Fallback: Try Shopify.customerPrivacy API
+    if (window.Shopify &&
+        window.Shopify.customerPrivacy &&
+        typeof window.Shopify.customerPrivacy.showPreferences === 'function') {
+      log('Calling Shopify.customerPrivacy.showPreferences()');
+      window.Shopify.customerPrivacy.showPreferences();
+      return;
+    }
+
+    // Last resort: retry with delay (banner may still be loading)
+    log('privacyBanner not ready - will retry');
+    var retryCount = 0;
+    var retryInterval = setInterval(function() {
+      retryCount++;
+      log('Retry attempt ' + retryCount + '/' + CONFIG.maxRetries);
+
+      if (typeof window.privacyBanner !== 'undefined' &&
+          typeof window.privacyBanner.showPreferences === 'function') {
+        clearInterval(retryInterval);
+        log('privacyBanner ready - showing preferences');
+        window.privacyBanner.showPreferences();
+      } else if (retryCount >= CONFIG.maxRetries) {
+        clearInterval(retryInterval);
+        log('❌ Failed to find privacyBanner after ' + CONFIG.maxRetries + ' retries');
+      }
+    }, CONFIG.retryInterval);
+  }
+
+  function initPreferenceLinks() {
+    log('Initializing preference links');
+
+    var links = document.querySelectorAll('a[href="#cookie-preference"], a[href="#cookie-preferences"]');
+    log('Found ' + links.length + ' preference links');
+
+    links.forEach(function(link) {
+      link.addEventListener('click', handlePreferenceLinkClick);
+    });
+
+    // Run initial diagnostic
+    setTimeout(function() {
+      log('Running diagnostic...');
+
+      if (typeof window.privacyBanner !== 'undefined' && window.privacyBanner.showPreferences) {
+        log('✅ privacyBanner.showPreferences() available');
+      } else if (window.Shopify?.customerPrivacy?.showPreferences) {
+        log('✅ Shopify.customerPrivacy.showPreferences() available (fallback)');
+      } else {
+        log('⚠️ No preference center API found - links may not work');
+      }
+    }, 2000);
+  }
+
+  // Initialize when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPreferenceLinks);
+  } else {
+    initPreferenceLinks();
+  }
+
+})();
+</script>
