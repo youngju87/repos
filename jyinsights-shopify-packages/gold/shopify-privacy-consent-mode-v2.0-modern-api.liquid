@@ -78,6 +78,31 @@
   var consentInitialized = false;
 
   // ==========================================================================
+  // IMMEDIATE CONSENT INITIALIZATION (for GTM)
+  // ==========================================================================
+
+  // GTM needs consent set BEFORE it loads, so we set defaults immediately
+  // This will be updated later when Shopify API provides stored consent
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+
+  // Set GTM consent defaults (for GTM's Consent tab)
+  gtag('consent', 'default', Object.assign({}, CONFIG.defaultConsent, {
+    wait_for_update: 500
+  }));
+
+  // Also push consent_default event to dataLayer (for GTM's Data Layer tab)
+  window.dataLayer.push({
+    event: 'consent_default',
+    consent_state: CONFIG.defaultConsent,
+    analytics_consent: false,
+    marketing_consent: false,
+    preferences_consent: false,
+    sale_of_data_consent: false,
+    consent_source: 'default'
+  });
+
+  // ==========================================================================
   // LOGGING
   // ==========================================================================
 
@@ -92,47 +117,13 @@
   // ==========================================================================
 
   function initializeGoogleConsentDefaults() {
-    log('🚀 Initializing Google Consent Mode v2...');
+    log('🚀 Initializing Google Consent Mode v2 for new user');
 
-    // Ensure dataLayer exists (create if needed - GTM/GA will use this)
-    window.dataLayer = window.dataLayer || [];
+    // Note: consent_default event and gtag('consent', 'default') already called at line 90-103
+    // This function is only called for NEW users (no stored consent)
+    // Nothing to do here - defaults already set at top level
 
-    // Immediately push default consent to dataLayer
-    window.dataLayer.push({
-      event: 'consent_default',
-      consent_state: CONFIG.defaultConsent,
-      analytics_consent: false,
-      marketing_consent: false,
-      preferences_consent: false,
-      sale_of_data_consent: false,
-      consent_source: 'default'
-    });
-
-    log('✅ consent_default pushed to dataLayer');
-
-    // Wait for gtag to be available for gtag consent API
-    var waitForGtag = setInterval(function() {
-      if (typeof window.gtag === 'function') {
-        clearInterval(waitForGtag);
-
-        log('✅ gtag ready - setting consent defaults');
-
-        // Set consent defaults via gtag
-        window.gtag('consent', 'default', Object.assign({}, CONFIG.defaultConsent, {
-          wait_for_update: 500
-        }));
-
-        log('✅ gtag consent defaults set');
-      }
-    }, 50);
-
-    // Timeout after 5 seconds
-    setTimeout(function() {
-      clearInterval(waitForGtag);
-      if (typeof window.gtag !== 'function') {
-        log('⚠️ gtag never became available (dataLayer still pushed)');
-      }
-    }, 5000);
+    log('✅ Consent defaults already initialized (using denied defaults from line 90)');
   }
 
   function initializeMicrosoftConsent() {
@@ -223,11 +214,9 @@
         'analytics=' + consentState.analytics_storage,
         'ads=' + consentState.ad_storage);
 
-    if (typeof window.gtag === 'function') {
-      window.gtag('consent', 'update', consentState);
-    } else {
-      log('⚠️ gtag function not available');
-    }
+    // Call gtag directly (defined at line 87)
+    gtag('consent', 'update', consentState);
+    log('✅ gtag("consent", "update") called');
 
     if (typeof window.dataLayer !== 'undefined') {
       window.dataLayer.push({
@@ -239,7 +228,7 @@
         sale_of_data_consent: consent ? consent.sale_of_data : false,
         consent_source: consent ? consent.source : 'default'
       });
-      log('✅ Consent pushed to dataLayer');
+      log('✅ consent_updated event pushed to dataLayer');
     } else {
       log('⚠️ dataLayer not available');
     }
@@ -421,45 +410,49 @@
         var initialConsent = getConsentFromShopify();
 
         if (initialConsent) {
-          // RETURNING USER: Set defaults to match stored consent
+          // RETURNING USER: Update consent to stored values
           log('✅ Initial consent found (returning user or already granted)');
 
-        // Set the initial state signature
-        lastConsentState = initialConsent.analytics + '|' + initialConsent.marketing + '|' +
-                          initialConsent.preferences + '|' + initialConsent.sale_of_data;
+          // Set the initial state signature
+          lastConsentState = initialConsent.analytics + '|' + initialConsent.marketing + '|' +
+                            initialConsent.preferences + '|' + initialConsent.sale_of_data;
 
-        // Initialize consent modes with stored values
-        initializeMicrosoftConsent();
+          // Initialize Microsoft consent
+          initializeMicrosoftConsent();
 
-        // Set Google defaults to match stored consent (not denied)
-        var storedConsentDefaults = mapShopifyToGoogleConsent(initialConsent);
-        window.dataLayer = window.dataLayer || [];
+          // Update consent to stored values (defaults already set to 'denied' at line 89)
+          var storedConsentDefaults = mapShopifyToGoogleConsent(initialConsent);
 
-        // Push consent_default with stored values
-        window.dataLayer.push({
-          event: 'consent_default',
-          consent_state: storedConsentDefaults,
-          analytics_consent: initialConsent.analytics,
-          marketing_consent: initialConsent.marketing,
-          preferences_consent: initialConsent.preferences,
-          sale_of_data_consent: initialConsent.sale_of_data,
-          consent_source: 'stored'
-        });
+          // Update gtag consent immediately using the gtag function defined at line 87
+          // The gtag function pushes to dataLayer, which GTM will process
+          log('🔄 Updating consent to stored values...');
 
-        // Set gtag defaults
-        if (typeof window.gtag === 'function') {
-          window.gtag('consent', 'default', Object.assign({}, storedConsentDefaults, {
-            wait_for_update: 500
-          }));
-        }
+          // Call gtag to update consent state (this pushes to dataLayer)
+          gtag('consent', 'update', storedConsentDefaults);
+          log('✅ gtag("consent", "update") called');
 
-        // No need to call updateAllConsentModes - defaults already set
+          // Also push consent_updated event to dataLayer
+          window.dataLayer.push({
+            event: 'consent_updated',
+            consent_state: storedConsentDefaults,
+            analytics_consent: initialConsent.analytics,
+            marketing_consent: initialConsent.marketing,
+            preferences_consent: initialConsent.preferences,
+            sale_of_data_consent: initialConsent.sale_of_data,
+            consent_source: 'stored'
+          });
+          log('✅ consent_updated event pushed to dataLayer');
 
-        log('📊 Loaded consent:',
-            'analytics=' + initialConsent.analytics,
-            'marketing=' + initialConsent.marketing,
-            'preferences=' + initialConsent.preferences,
-            'sale_of_data=' + initialConsent.sale_of_data);
+          // Update Microsoft consent too
+          updateMicrosoftConsent(initialConsent);
+
+          consentInitialized = true;
+
+          log('📊 Loaded consent:',
+              'analytics=' + initialConsent.analytics,
+              'marketing=' + initialConsent.marketing,
+              'preferences=' + initialConsent.preferences,
+              'sale_of_data=' + initialConsent.sale_of_data);
         } else {
           // NEW USER: Initialize with denied defaults
           log('⚠️ No initial consent - setting denied defaults (GDPR-safe)');
