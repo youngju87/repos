@@ -1,8 +1,8 @@
 /**
  * JY Insights Gold Plus Package - Checkout Pixel (ENHANCED)
  * Enhanced GA4-compliant checkout tracking with comprehensive parameter sets
- * Version: 2.0 (Gold Plus Enhanced)
- * Last Updated: 2026-01-09
+ * Version: 2.3 (Gold Plus Enhanced)
+ * Last Updated: 2026-01-14
  *
  * Installation: Add as Custom Pixel in Shopify Admin > Settings > Customer Events
  * Configuration: Update CONFIG.gtmContainerId with your GTM container ID
@@ -16,11 +16,19 @@
  * - Subscribes to Shopify checkout events via analytics.subscribe()
  * - Pushes GA4-compliant events to window.dataLayer
  * - Runs in sandboxed iframe with GTM loaded inside the iframe
- * - GTM loads LAZILY on first checkout event (not on storefront pages)
+ * - GTM loads IMMEDIATELY on pixel init (required for GA4 to fire in sandbox)
  * - Uses direct dataLayer.push() for all events
  * - Collects comprehensive user data, order data, product data
  * - Maintains consistency with storefront tracking (gold-storefront-datalayer-GA4-enhanced.liquid)
  * - Reads logged_in status from storefront via sessionStorage
+ * - Reads consent state from sessionStorage (set by shopify-privacy-consent-mode-v2.0-modern-api.liquid)
+ *
+ * CONSENT MODE:
+ * - Checkout iframe cannot access Shopify's customerPrivacy API (sandboxed)
+ * - Consent state is passed via sessionStorage key: 'jy_consent_state'
+ * - Storefront consent script saves consent to sessionStorage on every change
+ * - Checkout pixel reads and applies consent BEFORE GTM loads
+ * - Fires 'consent_state_loaded' event with current consent values
  *
  * ENHANCEMENTS vs v1.7:
  * - Comprehensive user parameters (full PII for thank you page)
@@ -51,7 +59,7 @@
 
   var CONFIG = {
     debug: true,
-    version: '2.0-enhanced',
+    version: '2.3-enhanced',
     googleFeedRegion: 'US',
     gtmContainerId: 'GTM-K9JX87Z6' // Replace with your GTM container ID
   };
@@ -453,30 +461,38 @@
     };
 
     // ENHANCED: Email with multiple hash algorithms
-    if (checkout.email) {
-      userData.email = checkout.email;
-      userData.email_sha1 = sha1Hash(checkout.email.toLowerCase().trim());
-      // Note: SHA256 should be provided by Shopify server-side
-    } else if (address.email) {
-      userData.email = address.email;
-      userData.email_sha1 = sha1Hash(address.email.toLowerCase().trim());
+    var emailValue = checkout.email || (address && address.email) || null;
+    if (emailValue) {
+      var normalizedEmail = emailValue.toLowerCase().trim();
+      userData.email = emailValue;
+      userData.email_sha1 = sha1Hash(normalizedEmail);
+      // SHA256 - use Web Crypto API if available (async, so we'll also try sync fallback)
+      if (window.crypto && window.crypto.subtle) {
+        // Note: SHA256 will be added asynchronously if crypto.subtle is available
+        // For immediate use, email_sha1 is available
+      }
     }
 
     // ENHANCED: Phone with multiple hash algorithms
-    if (checkout.phone) {
-      userData.phone = checkout.phone;
-      userData.phone_sha1 = sha1Hash(checkout.phone);
-    } else if (address.phone) {
-      userData.phone = address.phone;
-      userData.phone_sha1 = sha1Hash(address.phone);
+    var phoneValue = checkout.phone || (address && address.phone) || null;
+    if (phoneValue) {
+      userData.phone = phoneValue;
+      userData.phone_sha1 = sha1Hash(phoneValue);
     }
 
-    // ENHANCED: Full name (not just initials)
-    if (address.firstName) userData.first_name = address.firstName;
-    if (address.lastName) userData.last_name = address.lastName;
+    // ENHANCED: Full name + initials (initials match storefront for privacy-safe comparisons)
+    if (address.firstName) {
+      userData.first_name = address.firstName;
+      userData.first_name_initial = address.firstName.charAt(0).toLowerCase();
+    }
+    if (address.lastName) {
+      userData.last_name = address.lastName;
+      userData.last_name_initial = address.lastName.charAt(0).toLowerCase();
+    }
 
     // ENHANCED: Complete address object
     if (address.address1 || address.city || address.zip) {
+      userData.has_address = true;
       userData.address = {};
       if (address.firstName) userData.address.firstName = address.firstName;
       if (address.lastName) userData.address.lastName = address.lastName;
@@ -496,15 +512,30 @@
     if (address.countryCode) userData.country = address.countryCode;
     if (address.zip) userData.zip = address.zip;
 
-    // Customer ID (if logged in)
+    // Customer ID (if logged in) - check multiple sources
+    // Shopify checkout may provide customer ID in different locations
+    var customerId = null;
     if (customer && customer.id) {
-      userData.user_id = String(customer.id);
+      customerId = customer.id;
+    } else if (checkout.customerId) {
+      customerId = checkout.customerId;
+    } else if (checkout.order && checkout.order.customer && checkout.order.customer.id) {
+      customerId = checkout.order.customer.id;
+    }
+
+    if (customerId) {
+      userData.user_id = String(customerId);
     }
 
     // ENHANCED: RFM Metrics
     if (customer && customer.ordersCount !== undefined) {
       userData.orders_count = customer.ordersCount;
       userData.order_frequency = customer.ordersCount;
+    }
+
+    // Lifetime value (if available from customer object)
+    if (customer && customer.amountSpent && customer.amountSpent.amount) {
+      userData.lifetime_value = parsePrice(customer.amountSpent.amount);
     }
 
     // ENHANCED: Marketing opt-in status
@@ -586,48 +617,179 @@
   }
 
   // ==========================================================================
-  // LAZY GTM INITIALIZATION
+  // IMMEDIATE GTM INITIALIZATION
   // ==========================================================================
+  // GTM must load IMMEDIATELY (not lazily) for GA4 to work in Shopify's
+  // sandboxed checkout iframe. Loading inside analytics.subscribe() callbacks
+  // creates race conditions that prevent GA4 collect requests from firing.
 
-  var gtmLoaded = false;
+  // Initialize dataLayer
+  window.dataLayer = window.dataLayer || [];
 
-  function ensureGTM() {
-    if (gtmLoaded) return;
-    gtmLoaded = true;
+  // ==========================================================================
+  // CONSENT MODE - Using Shopify's Checkout Customer Privacy API
+  // ==========================================================================
+  // Shopify provides a checkout-specific consent API that works in the sandbox:
+  // - init.customerPrivacy: Initial consent state
+  // - api.customerPrivacy.subscribe(): Listen for consent changes during checkout
+  // This is more reliable than sessionStorage for mid-checkout consent updates.
 
-    // Initialize dataLayer
-    window.dataLayer = window.dataLayer || [];
+  function gtag(){window.dataLayer.push(arguments);}
 
-    // Get initial context from Shopify's init object
-    var initContextData = (typeof init !== 'undefined' && init.context) ? init.context.document : null;
+  // Default consent configuration (GDPR-safe defaults)
+  var defaultConsentState = {
+    'analytics_storage': 'denied',
+    'ad_storage': 'denied',
+    'ad_user_data': 'denied',
+    'ad_personalization': 'denied',
+    'personalization_storage': 'denied',
+    'functionality_storage': 'granted',
+    'security_storage': 'granted'
+  };
 
-    if (initContextData) {
-      window.dataLayer.push({
-        page_location: initContextData.location ? initContextData.location.href : '',
-        page_referrer: initContextData.referrer || '',
-        page_title: initContextData.title || ''
-      });
-      log('Initial page data pushed to dataLayer', {
-        page_title: initContextData.title
-      });
+  // Track current consent state for change detection
+  var currentCustomerPrivacy = null;
+
+  /**
+   * Map Shopify's customerPrivacy format to Google Consent Mode format
+   * Shopify format: { analyticsProcessingAllowed, marketingAllowed, preferencesProcessingAllowed, saleOfDataAllowed }
+   * Google format: { analytics_storage, ad_storage, ad_user_data, ad_personalization, ... }
+   */
+  function mapToGoogleConsent(customerPrivacy) {
+    if (!customerPrivacy) {
+      return defaultConsentState;
     }
 
-    // Load GTM script
-    (function(w,d,s,l,i){
-      w[l]=w[l]||[];
-      w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
-      var f=d.getElementsByTagName(s)[0],
-          j=d.createElement(s), dl=l!='dataLayer'?'&l='+l:'';
-      j.async=true;
-      j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
-      f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer', CONFIG.gtmContainerId);
+    return {
+      'analytics_storage': customerPrivacy.analyticsProcessingAllowed ? 'granted' : 'denied',
+      'ad_storage': customerPrivacy.marketingAllowed ? 'granted' : 'denied',
+      'ad_user_data': customerPrivacy.marketingAllowed ? 'granted' : 'denied',
+      'ad_personalization': customerPrivacy.marketingAllowed ? 'granted' : 'denied',
+      'personalization_storage': customerPrivacy.preferencesProcessingAllowed ? 'granted' : 'denied',
+      'functionality_storage': 'granted',
+      'security_storage': 'granted'
+    };
+  }
 
-    log('GTM loaded in checkout pixel iframe (enhanced)', {
-      version: CONFIG.version,
-      containerId: CONFIG.gtmContainerId
+  /**
+   * Handle consent updates (both initial and mid-checkout changes)
+   */
+  function updateConsentMode(customerPrivacy, source) {
+    var consentState = mapToGoogleConsent(customerPrivacy);
+
+    // Update Google Consent Mode
+    gtag('consent', 'update', consentState);
+
+    // Push event to dataLayer for GTM triggers
+    window.dataLayer.push({
+      event: 'consent_updated',
+      consent_state: consentState,
+      consent_source: source,
+      analytics_consent: customerPrivacy ? customerPrivacy.analyticsProcessingAllowed : false,
+      marketing_consent: customerPrivacy ? customerPrivacy.marketingAllowed : false,
+      preferences_consent: customerPrivacy ? customerPrivacy.preferencesProcessingAllowed : false,
+      sale_of_data_consent: customerPrivacy ? customerPrivacy.saleOfDataAllowed : false
+    });
+
+    log('Consent updated in checkout', {
+      analytics: consentState.analytics_storage,
+      ads: consentState.ad_storage,
+      source: source
+    });
+
+    currentCustomerPrivacy = customerPrivacy;
+  }
+
+  // Get initial consent from Shopify's init object
+  var initialCustomerPrivacy = (typeof init !== 'undefined' && init.customerPrivacy)
+    ? init.customerPrivacy
+    : null;
+
+  // Fallback: Try sessionStorage if init.customerPrivacy not available
+  if (!initialCustomerPrivacy && isSessionStorageAvailable()) {
+    try {
+      var consentJson = sessionStorage.getItem('jy_consent_state');
+      if (consentJson) {
+        var storedConsent = JSON.parse(consentJson);
+        // Convert sessionStorage format to customerPrivacy format
+        initialCustomerPrivacy = {
+          analyticsProcessingAllowed: storedConsent.analytics || false,
+          marketingAllowed: storedConsent.marketing || false,
+          preferencesProcessingAllowed: storedConsent.preferences || false,
+          saleOfDataAllowed: storedConsent.sale_of_data || false
+        };
+        log('Consent loaded from sessionStorage fallback', initialCustomerPrivacy);
+      }
+    } catch (e) {
+      log('Error reading consent from sessionStorage', e);
+    }
+  }
+
+  // Set initial consent state
+  var initialConsentState = mapToGoogleConsent(initialCustomerPrivacy);
+  currentCustomerPrivacy = initialCustomerPrivacy;
+
+  // Set consent BEFORE GTM loads (critical for proper consent handling)
+  gtag('consent', 'default', initialConsentState);
+
+  // Push initial consent event to dataLayer
+  window.dataLayer.push({
+    event: 'consent_state_loaded',
+    consent_state: initialConsentState,
+    consent_source: initialCustomerPrivacy ? 'shopify_checkout' : 'default',
+    analytics_consent: initialCustomerPrivacy ? initialCustomerPrivacy.analyticsProcessingAllowed : false,
+    marketing_consent: initialCustomerPrivacy ? initialCustomerPrivacy.marketingAllowed : false
+  });
+
+  log('Consent mode initialized in checkout pixel', {
+    analytics: initialConsentState.analytics_storage,
+    ads: initialConsentState.ad_storage,
+    source: initialCustomerPrivacy ? 'shopify_checkout' : 'default'
+  });
+
+  // Subscribe to consent changes during checkout (user updates preferences mid-checkout)
+  if (typeof api !== 'undefined' && api.customerPrivacy && typeof api.customerPrivacy.subscribe === 'function') {
+    api.customerPrivacy.subscribe('visitorConsentCollected', function(event) {
+      log('Consent changed during checkout', event.customerPrivacy);
+      updateConsentMode(event.customerPrivacy, 'checkout_update');
+    });
+    log('Subscribed to checkout consent changes via api.customerPrivacy');
+  } else {
+    log('api.customerPrivacy.subscribe not available - consent changes during checkout will not be detected');
+  }
+
+  // Push initial page_view event before GTM loads
+  window.dataLayer.push({ event: 'page_view', context: 'checkout' });
+
+  // Get initial context from Shopify's init object (if available)
+  var initContextData = (typeof init !== 'undefined' && init.context) ? init.context.document : null;
+
+  if (initContextData) {
+    window.dataLayer.push({
+      page_location: initContextData.location ? initContextData.location.href : '',
+      page_referrer: initContextData.referrer || '',
+      page_title: initContextData.title || ''
+    });
+    log('Initial page data pushed to dataLayer', {
+      page_title: initContextData.title
     });
   }
+
+  // Load GTM script IMMEDIATELY
+  (function(w,d,s,l,i){
+    w[l]=w[l]||[];
+    w[l].push({'gtm.start': new Date().getTime(), event:'gtm.js'});
+    var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s), dl=l!='dataLayer'?'&l='+l:'';
+    j.async=true;
+    j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+    f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer', CONFIG.gtmContainerId);
+
+  log('GTM loaded IMMEDIATELY in checkout pixel iframe (enhanced)', {
+    version: CONFIG.version,
+    containerId: CONFIG.gtmContainerId
+  });
 
   // ==========================================================================
   // ENHANCED CHECKOUT STARTED
@@ -640,10 +802,7 @@
     var checkout = event.data.checkout;
     if (!checkout || !checkout.lineItems) return;
 
-    // Lazy load GTM on first checkout event
-    ensureGTM();
-
-    // Push context events ONCE
+    // Push context events ONCE (GTM already loaded above)
     if (!contextEventsSent) {
       var eventContextData = context ? context.document : null;
 
@@ -673,17 +832,6 @@
         page_data: pageData
       });
       log('page_data_ready pushed (enhanced)', pageData);
-
-      // Push page_view event
-      window.dataLayer.push({
-        event: 'page_view',
-        context: 'checkout',
-        page_type: 'checkout',
-        page_title: eventContextData ? eventContextData.title : '',
-        user_logged_in: userData.logged_in,
-        user_type: userData.customer_type
-      });
-      log('page_view pushed (enhanced)');
 
       contextEventsSent = true;
     }

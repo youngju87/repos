@@ -102,6 +102,23 @@
     consent_source: 'default'
   });
 
+  // Save default consent to sessionStorage for checkout pixel (will be updated when user grants consent)
+  try {
+    // Only set defaults if no consent is already stored (don't overwrite returning user's consent)
+    if (!sessionStorage.getItem('jy_consent_state')) {
+      sessionStorage.setItem('jy_consent_state', JSON.stringify({
+        analytics: false,
+        marketing: false,
+        preferences: false,
+        sale_of_data: false,
+        timestamp: Date.now(),
+        source: 'default'
+      }));
+    }
+  } catch (e) {
+    // sessionStorage not available
+  }
+
   // ==========================================================================
   // LOGGING
   // ==========================================================================
@@ -264,6 +281,32 @@
     updateGoogleConsent(consent);
     updateMicrosoftConsent(consent);
     consentInitialized = true;
+
+    // Save consent to sessionStorage for checkout pixel
+    // Checkout runs in sandboxed iframe and can't access Shopify's customerPrivacy API
+    saveConsentToSessionStorage(consent);
+  }
+
+  /**
+   * Save consent state to sessionStorage for checkout pixel
+   * The checkout pixel runs in a sandboxed iframe without access to Shopify's
+   * customerPrivacy API, so we pass consent state via sessionStorage
+   */
+  function saveConsentToSessionStorage(consent) {
+    try {
+      var consentData = {
+        analytics: consent.analytics || false,
+        marketing: consent.marketing || false,
+        preferences: consent.preferences || false,
+        sale_of_data: consent.sale_of_data || false,
+        timestamp: Date.now(),
+        source: consent.source || 'unknown'
+      };
+      sessionStorage.setItem('jy_consent_state', JSON.stringify(consentData));
+      log('✅ Consent saved to sessionStorage for checkout pixel');
+    } catch (e) {
+      log('⚠️ Could not save consent to sessionStorage:', e);
+    }
   }
 
   // ==========================================================================
