@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loyalty Tag Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .success {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .result-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .result-data {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .cookie-display {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            border-radius: 4px;
+        }
+        .cookie-display strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Loyalty Tag Tester</h1>
+        <p>Test the VFC Loyalty API and cookie setting functionality</p>
+
+        <div class="input-group">
+            <label for="customerId">Shopify Customer ID:</label>
+            <input type="text" id="customerId" placeholder="e.g., 9142062514494" value="9142062514494">
+        </div>
+
+        <button id="testBtn" onclick="testLoyaltyTag()">🚀 Test Loyalty API</button>
+
+        <div id="results" style="display: none;"></div>
+        <div id="cookieDisplay" class="cookie-display" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Cookie utility functions
+        function setCookie(name, value, days) {
+            var expires = "";
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+        }
+
+        function getCookie(name) {
+            var nameEQ = name + "=";
+            var ca = document.cookie.split(';');
+            for(var i = 0; i < ca.length; i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        // Function to generate UUID v4
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0;
+                var v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        function displayResults(success, title, data) {
+            var resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = 'block';
+            resultsDiv.className = 'results ' + (success ? 'success' : 'error');
+
+            var html = '<div class="result-title">' + title + '</div>';
+            html += '<div class="result-data">' + JSON.stringify(data, null, 2) + '</div>';
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function displayCookies() {
+            var cookieDiv = document.getElementById('cookieDisplay');
+            var loyaltyMember = getCookie('loyalty_member');
+            var loyaltyTier = getCookie('loyalty_tier');
+
+            if (loyaltyMember || loyaltyTier) {
+                cookieDiv.style.display = 'block';
+                cookieDiv.innerHTML = '<strong>🍪 Cookies Set:</strong>' +
+                    '<div>loyalty_member: <strong>' + (loyaltyMember || 'not set') + '</strong></div>' +
+                    '<div>loyalty_tier: <strong>' + (loyaltyTier || 'not set') + '</strong></div>';
+            }
+        }
+
+        function testLoyaltyTag() {
+            var customerId = document.getElementById('customerId').value;
+            var testBtn = document.getElementById('testBtn');
+
+            if (!customerId) {
+                alert('Please enter a Customer ID');
+                return;
+            }
+
+            testBtn.disabled = true;
+            testBtn.textContent = '⏳ Testing...';
+
+            // VFC API Configuration
+            var clientId = 'd75d7b376d6e4881a7c7d8d0161ee734';
+            var clientSecret = 'f5B15dDdb5D446f9b1591E4812635361';
+
+            // VFC API endpoint
+            var apiUrl = 'https://preprod.xapi.vfc.com/data/v2/consumer/' +
+                         encodeURIComponent(customerId) +
+                         '?includeLoyaltySummary=true';
+
+            console.log('Fetching loyalty data from VFC API for customer:', customerId);
+
+            fetch(apiUrl, {
+                method: 'GET',
+                headers: {
+                    'x-transaction-id': generateUUID(),
+                    'channel': 'ECOMM',
+                    'siteid': 'IB-US',
+                    'source': 'ECOM15',
+                    'region': 'NORA',
+                    'brand': 'IB',
+                    'locale': 'en_US',
+                    'client_id': clientId,
+                    'client_secret': clientSecret,
+                    'x-usid': generateUUID()
+                }
+            })
+            .then(function(response) {
+                console.log('Response Status:', response.status);
+                if (!response.ok) {
+                    throw new Error('API request failed with status: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(function(data) {
+                console.log('API Response:', data);
+
+                if (data && data.opt_in && data.vip_tier_name) {
+                    var isLoyaltyMember = true;
+                    var loyaltyTier = data.vip_tier_name;
+
+                    // Set cookies (30 days)
+                    setCookie('loyalty_member', isLoyaltyMember, 30);
+                    setCookie('loyalty_tier', loyaltyTier, 30);
+
+                    displayResults(true, '✅ Success! Loyalty Data Retrieved', {
+                        loyalty_member: isLoyaltyMember,
+                        loyalty_tier: loyaltyTier,
+                        points_balance: data.points_balance,
+                        total_spend: '$' + (data.total_spend_cents / 100).toFixed(2),
+                        total_purchases: data.total_purchases,
+                        opted_in_at: data.opted_in_at
+                    });
+
+                    displayCookies();
+                } else {
+                    setCookie('loyalty_member', false, 30);
+                    setCookie('loyalty_tier', 'None', 30);
+
+                    displayResults(false, '⚠️ No Loyalty Membership Found', {
+                        message: 'User is not opted in or not a loyalty member',
+                        opt_in: data.opt_in || false,
+                        vip_tier_name: data.vip_tier_name || 'None'
+                    });
+
+                    displayCookies();
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+
+                setCookie('loyalty_member', false, 30);
+                setCookie('loyalty_tier', 'None', 30);
+
+                displayResults(false, '❌ Error Occurred', {
+                    error: error.message,
+                    tip: 'Check console for detailed error information'
+                });
+
+                displayCookies();
+            })
+            .finally(function() {
+                testBtn.disabled = false;
+                testBtn.textContent = '🚀 Test Loyalty API';
+            });
+        }
+
+        // Display existing cookies on page load
+        window.onload = function() {
+            displayCookies();
+        };
+    </script>
+</body>
+</html>

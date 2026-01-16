@@ -1,0 +1,164 @@
+<script>
+(function() {
+  // Language configuration
+  const LANGUAGE_CONFIG = {
+    en: {
+      greeting: "Hi, what can I help you with today?",
+      greetingLoggedIn: "Hi {email}, thank you for being a Timberland community member. What can I help you with today?",
+      launcherText: "Live Chat",
+      proactiveBannerText: "Hi, what can I help you with today?"
+    },
+    fr: {
+      greeting: "Bonjour, comment puis-je vous aider aujourd'hui?",
+      greetingLoggedIn: "Bonjour {email}, merci d'être membre de la communauté Timberland. Comment puis-je vous aider aujourd'hui?",
+      launcherText: "Chat en Direct",
+      proactiveBannerText: "Bonjour, comment puis-je vous aider aujourd'hui?"
+    },
+    de: {
+      greeting: "Hallo, wie kann ich Ihnen heute helfen?",
+      greetingLoggedIn: "Hallo {email}, vielen Dank, dass Sie Mitglied der Timberland-Community sind. Wie kann ich Ihnen heute helfen?",
+      launcherText: "Live-Chat",
+      proactiveBannerText: "Hallo, wie kann ich Ihnen heute helfen?"
+    },
+    it: {
+      greeting: "Ciao, come posso aiutarti oggi?",
+      greetingLoggedIn: "Ciao {email}, grazie per essere un membro della comunità Timberland. Come posso aiutarti oggi?",
+      launcherText: "Chat dal Vivo",
+      proactiveBannerText: "Ciao, come posso aiutarti oggi?"
+    },
+    es: {
+      greeting: "Hola, ¿en qué puedo ayudarte hoy?",
+      greetingLoggedIn: "Hola {email}, gracias por ser miembro de la comunidad Timberland. ¿En qué puedo ayudarte hoy?",
+      launcherText: "Chat en Vivo",
+      proactiveBannerText: "Hola, ¿en qué puedo ayudarte hoy?"
+    },
+    nl: {
+      greeting: "Hallo, waarmee kan ik je vandaag helpen?",
+      greetingLoggedIn: "Hallo {email}, bedankt dat je lid bent van de Timberland-gemeenschap. Waarmee kan ik je vandaag helpen?",
+      launcherText: "Live Chat",
+      proactiveBannerText: "Hallo, waarmee kan ik je vandaag helpen?"
+    }
+  };
+
+  // Constants
+  const AGENT_TOKEN = "mS6nPAgBlE2009YBlE21KNq6Ntoxx_ftrix3K0nhCHY";
+  const SCRIPT_URL = "https://sierra.chat/agent/" + AGENT_TOKEN + "/embed";
+
+  // Helper functions
+  function getLanguage() {
+    // Priority order:
+    // 1. GTM variable (passed from tag)
+    // 2. HTML lang attribute
+    // 3. Browser language
+    // 4. Fallback to English
+
+    var lang = arguments[0] || // GTM variable will be passed here
+               document.documentElement.lang ||
+               navigator.language ||
+               navigator.userLanguage ||
+               'en';
+
+    // Extract base language code (e.g., 'en' from 'en-US')
+    lang = lang.split('-')[0].toLowerCase();
+
+    // Ensure we only use supported languages
+    var supportedLangs = ['en', 'fr', 'de', 'it', 'es', 'nl'];
+    return supportedLangs.indexOf(lang) !== -1 ? lang : 'en';
+  }
+
+  function getConfig(lang) {
+    // Fallback to English if language not supported
+    return LANGUAGE_CONFIG[lang] || LANGUAGE_CONFIG.en;
+  }
+
+  function getCustomerId() {
+    // Support multiple data layer variable formats
+    return window.dataLayer?.find(function(item) {
+      return item.user?.customer_id;
+    })?.user?.customer_id || null;
+  }
+
+  function getEmailHash() {
+    // Support multiple data layer variable formats
+    return window.dataLayer?.find(function(item) {
+      return item.user?.encodedEmailSha;
+    })?.user?.encodedEmailSha || null;
+  }
+
+  // Initialize configuration
+  // These will be replaced by GTM variables when used in GTM
+  var gtmLanguage = '{{cjs - countryLanguage}}';
+  var gtmCountryCode = '{{cjs - countryCode}}';
+
+  // Use GTM variable if available (will be literal string if not in GTM context)
+  var countryLang = (gtmLanguage && gtmLanguage.indexOf('{{') === -1) ? gtmLanguage : null;
+  var countryCode = (gtmCountryCode && gtmCountryCode.indexOf('{{') === -1) ? gtmCountryCode : null;
+
+  var currentLang = getLanguage(countryLang);
+  var langConfig = getConfig(currentLang);
+  var customerId = getCustomerId();
+  var emailHash = getEmailHash();
+
+  // Base configuration
+  var baseConfig = {
+    display: "corner",
+    customStyle: {
+      zIndex: "2000"
+    },
+    dimensions: {
+      width: "25rem",
+      height: "40rem"
+    },
+    launcher: {
+      backgroundColor: "#000000",
+      textColor: "#ffffff",
+      text: langConfig.launcherText,
+      icon: "oval",
+      proactiveBanner: {
+        text: langConfig.proactiveBannerText,
+        showAfterSeconds: 10,
+        hideAfterSeconds: 30
+      },
+      customStyle: {
+        bottom: "10px",
+        right: "10px",
+        zIndex: "100"
+      }
+    }
+  };
+
+  // Add customer-specific configuration
+  if (customerId) {
+    baseConfig.variables = {
+      CONSUMER_ID: customerId,
+      LANGUAGE: currentLang,
+      COUNTRY_CODE: countryCode || ''
+    };
+
+    // Personalized greeting with email hash if available
+    baseConfig.customGreeting = emailHash
+      ? langConfig.greetingLoggedIn.replace("{email}", emailHash)
+      : langConfig.greetingLoggedIn.replace("{email}, ", "");
+  } else {
+    baseConfig.customGreeting = langConfig.greeting;
+    baseConfig.variables = {
+      LANGUAGE: currentLang,
+      COUNTRY_CODE: countryCode || ''
+    };
+  }
+
+  // Set global config
+  window.sierraConfig = baseConfig;
+
+  // Load Sierra script
+  var scriptEl = document.createElement('script');
+  scriptEl.type = 'module';
+  scriptEl.src = SCRIPT_URL;
+  scriptEl.async = true;
+  scriptEl.onerror = function() {
+    console.error('Failed to load Sierra chat widget');
+  };
+
+  document.head.appendChild(scriptEl);
+})();
+</script>

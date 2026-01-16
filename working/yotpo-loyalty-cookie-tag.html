@@ -1,0 +1,153 @@
+<script>
+(function() {
+  'use strict';
+
+  // Cookie utility functions
+  function setCookie(name, value, days) {
+    var expires = "";
+    if (days) {
+      var date = new Date();
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+  }
+
+  function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i = 0; i < ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  }
+
+  // Function to generate UUID v4
+  function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0;
+      var v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  // Function to fetch loyalty data via VFC API
+  function fetchLoyaltyData(customerId) {
+    if (!customerId) {
+      console.error('Customer ID not found');
+      setCookie('loyalty_member', false, 30);
+      setCookie('loyalty_tier', 'None', 30);
+      return;
+    }
+
+    // VFC API Configuration
+    var clientId = 'd75d7b376d6e4881a7c7d8d0161ee734';
+    var clientSecret = 'f5B15dDdb5D446f9b1591E4812635361';
+
+    // VFC API endpoint
+    var apiUrl = 'https://preprod.xapi.vfc.com/data/v2/consumer/' +
+                 encodeURIComponent(customerId) +
+                 '?includeLoyaltySummary=true';
+
+    console.log('Fetching loyalty data from VFC API for customer:', customerId);
+
+    fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'x-transaction-id': generateUUID(),
+        'channel': 'ECOMM',
+        'siteid': 'IB-US',
+        'source': 'ECOM15',
+        'region': 'NORA',
+        'brand': 'IB',
+        'locale': 'en_US',
+        'client_id': clientId,
+        'client_secret': clientSecret,
+        'x-usid': generateUUID()
+      }
+    })
+    .then(function(response) {
+      if (!response.ok) {
+        throw new Error('API request failed with status: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(function(data) {
+      if (data && data.opt_in && data.vip_tier_name) {
+        var isLoyaltyMember = true;
+        var loyaltyTier = data.vip_tier_name;
+
+        // Set cookies (30 days)
+        setCookie('loyalty_member', isLoyaltyMember, 30);
+        setCookie('loyalty_tier', loyaltyTier, 30);
+
+        console.log('Loyalty Cookies Set:', {
+          loyalty_member: isLoyaltyMember,
+          loyalty_tier: loyaltyTier,
+          points_balance: data.points_balance,
+          total_spend: data.total_spend_cents / 100
+        });
+
+        // Push to dataLayer for GTM
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({
+          'event': 'loyaltyDataSet',
+          'loyalty_member': isLoyaltyMember,
+          'loyalty_tier': loyaltyTier,
+          'loyalty_points': data.points_balance,
+          'loyalty_total_spend': data.total_spend_cents / 100,
+          'loyalty_total_purchases': data.total_purchases
+        });
+      } else {
+        // Not a loyalty member or not opted in
+        setCookie('loyalty_member', false, 30);
+        setCookie('loyalty_tier', 'None', 30);
+        console.log('No loyalty membership found or user not opted in');
+      }
+    })
+    .catch(function(error) {
+      console.error('Error fetching loyalty data:', error);
+      // Set default values on error
+      setCookie('loyalty_member', false, 30);
+      setCookie('loyalty_tier', 'None', 30);
+    });
+  }
+
+  // Function to check loyalty status using VFC API
+  function checkLoyaltyStatus() {
+    // INSTRUCTIONS: Replace the variable names below with your actual GTM variable names
+    // Use the format: {{Your Variable Name}}
+
+    // Check if customer is logged in using GTM variable
+    // REPLACE: {{Customer Is Logged In}} with your GTM variable for logged in status
+    var isLoggedIn = {{Customer Is Logged In}};
+
+    if (!isLoggedIn) {
+      console.log('Customer not logged in - loyalty cookies set to false');
+      setCookie('loyalty_member', false, 30);
+      setCookie('loyalty_tier', 'None', 30);
+      return;
+    }
+
+    // Get customer ID from GTM variable (Shopify customer ID)
+    // REPLACE: {{Customer ID}} with your GTM variable for Shopify customer ID
+    var customerId = {{Customer ID}};
+
+    if (!customerId) {
+      console.error('Customer ID not available');
+      setCookie('loyalty_member', false, 30);
+      setCookie('loyalty_tier', 'None', 30);
+      return;
+    }
+
+    // Fetch loyalty data from VFC API
+    fetchLoyaltyData(customerId);
+  }
+
+  // Start the loyalty check
+  checkLoyaltyStatus();
+
+})();
+</script>
