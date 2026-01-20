@@ -1,0 +1,41 @@
+# Consent Rule: Consent Mode State
+# Validates consent state is included in GA4 hits
+
+id: consent-ga4-002
+name: Consent State Should Be Included in GA4 Hits
+description: |
+  GA4 should send consent state (gcs parameter) for compliance tracking.
+  Missing consent state makes compliance audits difficult.
+type: payload
+severity: warning
+category: consent
+platform: ga4
+environments:
+  - production
+
+enabled: true
+
+target:
+  urlPattern: google-analytics\.com/g/collect
+
+source: query
+
+fields:
+  - name: gcs
+    required: false
+    message: |
+      Consent state (gcs) parameter helps track consent compliance
+      Format: G1[analytics_storage][ad_storage]
+
+assertions: []
+
+metadata:
+  impact: medium
+  falsePositives: |
+    - Non-EU/CA traffic may not send consent state
+    - Older GA4 implementations may not support gcs
+  remediation: |
+    Implement Google Consent Mode v2
+    Verify consent signals are being sent to GA4
+  documentation: https://developers.google.com/tag-platform/security/guides/consent
+  compliance: GDPR Article 30 (record keeping)

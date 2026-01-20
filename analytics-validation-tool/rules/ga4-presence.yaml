@@ -1,0 +1,29 @@
+# GA4 Presence Rule
+# Validates that GA4 is properly installed
+
+id: ga4-presence
+name: GA4 Tag Must Be Present
+description: Ensures Google Analytics 4 is installed on the page
+type: presence
+severity: error
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+# Target configuration
+target:
+  type: tag
+  platform: ga4
+
+# Should exist
+shouldExist: true
+
+# Count constraints
+minCount: 1
+maxCount: 1
+
+# Assertions (not used for presence rules, but required)
+assertions: []

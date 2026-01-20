@@ -1,0 +1,39 @@
+# GA4 Events Rule: Event Name Required
+# Validates all hits have event names
+
+id: ga4-events-001
+name: Event Name Must Be Present
+description: |
+  All GA4 hits must include an event name (en parameter).
+  No event name = hit rejected by GA4.
+type: payload
+severity: error
+category: events
+platform: ga4
+environments:
+  - production
+  - staging
+  - development
+
+enabled: true
+
+target:
+  urlPattern: google-analytics\.com/g/collect
+
+source: query
+
+fields:
+  - name: en
+    required: true
+    type: string
+    message: Event name (en) is required for all GA4 hits
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: none
+  remediation: |
+    Ensure all gtag() calls include event name
+    Example: gtag('event', 'page_view', {...})
+  documentation: https://support.google.com/analytics/answer/9267735

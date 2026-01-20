@@ -1,0 +1,43 @@
+# GA4 Protocol Rule: Client ID
+# Validates client ID format and presence
+
+id: ga4-protocol-002
+name: Client ID Must Be Present
+description: |
+  Client ID (cid) is required for GA4 to track users.
+  Format: NNNNNNNNNN.NNNNNNNNNN (two random integers separated by dot)
+type: payload
+severity: error
+category: protocol
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+target:
+  urlPattern: google-analytics\.com/g/collect
+
+source: query
+
+fields:
+  - name: cid
+    required: true
+    pattern: ^\d{8,10}\.\d{10}$
+    message: |
+      Client ID must be in format NNNNNNNNNN.NNNNNNNNNN
+      GA4 will reject hits without valid client ID
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: |
+    - First-party data collection may use different format
+    - Server-side implementations may use custom client IDs
+  remediation: |
+    1. Ensure _ga cookie is set correctly
+    2. Verify gtag.js is setting client_id parameter
+    3. Check cookie domain and path settings
+  documentation: https://support.google.com/analytics/answer/11986666

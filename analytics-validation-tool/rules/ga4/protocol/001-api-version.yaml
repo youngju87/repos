@@ -1,0 +1,39 @@
+# GA4 Protocol Rule: API Version
+# Validates GA4 Measurement Protocol version
+
+id: ga4-protocol-001
+name: GA4 API Version Must Be 2
+description: |
+  GA4 Measurement Protocol v2 is the only supported version.
+  Incorrect version results in rejected hits.
+type: payload
+severity: error
+category: protocol
+platform: ga4
+environments:
+  - production
+  - staging
+  - development
+
+enabled: true
+
+target:
+  urlPattern: google-analytics\.com/g/collect
+
+source: query
+
+fields:
+  - name: v
+    required: true
+    value: "2"
+    message: GA4 API version must be 2 (v=2)
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: none
+  remediation: |
+    This is typically set automatically by gtag.js
+    If implementing server-side tracking, ensure v=2 parameter
+  documentation: https://developers.google.com/analytics/devguides/collection/protocol/ga4

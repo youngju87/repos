@@ -1,0 +1,309 @@
+# E-commerce Checkout Journey
+# Validates analytics implementation through a complete purchase flow
+
+id: ecommerce-checkout-001
+name: E-commerce Checkout Journey
+description: |
+  Complete checkout flow from product page to purchase confirmation.
+  Validates GA4 ecommerce events at each step.
+
+startUrl: https://example.com/products/widget-123
+
+config:
+  defaultTimeout: 30000
+  captureScreenshots: true
+  continueOnFailure: false
+  globalValidationRules:
+    - ga4-foundation-001  # GA4 tag presence
+    - ga4-protocol-001    # API version
+    - ga4-protocol-002    # Client ID
+
+steps:
+  - id: step-1-product-view
+    name: View Product Page
+    description: Land on product page and verify view_item event
+    actions:
+      # Wait for page to fully load
+      - type: wait
+        for: selector
+        selector: .product-details
+        timeout: 10000
+
+      # Wait for GA4 view_item event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: view_item
+        timeout: 5000
+
+      # Verify product title is visible
+      - type: assert
+        assertType: visible
+        selector: .product-title
+        message: Product title should be visible
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/01-product-view.png
+        fullPage: true
+
+    captureAnalytics: true
+    validationRules:
+      - ga4-events-001  # Event name required
+      - ga4-events-002  # Page view validation
+
+  - id: step-2-add-to-cart
+    name: Add Product to Cart
+    description: Click add to cart and verify add_to_cart event
+    actions:
+      # Click add to cart button
+      - type: click
+        selector: button.add-to-cart
+        waitForSelector: true
+
+      # Wait for add_to_cart event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: add_to_cart
+        timeout: 5000
+
+      # Wait for cart icon to update
+      - type: wait
+        for: selector
+        selector: .cart-count[data-count="1"]
+        timeout: 5000
+
+      # Verify success message
+      - type: assert
+        assertType: visible
+        selector: .cart-success-message
+        message: Add to cart success message should appear
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/02-add-to-cart.png
+
+    captureAnalytics: true
+
+  - id: step-3-view-cart
+    name: Navigate to Cart
+    description: Go to cart page and verify view_cart event
+    actions:
+      # Click cart icon
+      - type: click
+        selector: .cart-icon
+
+      # Wait for cart page to load
+      - type: wait
+        for: selector
+        selector: .cart-items
+        timeout: 10000
+
+      # Wait for view_cart event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: view_cart
+        timeout: 5000
+
+      # Verify cart contains item
+      - type: assert
+        assertType: count
+        selector: .cart-item
+        expected: 1
+        operator: greaterThan
+        message: Cart should contain at least one item
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/03-view-cart.png
+        fullPage: true
+
+    captureAnalytics: true
+
+  - id: step-4-begin-checkout
+    name: Begin Checkout
+    description: Click checkout and verify begin_checkout event
+    actions:
+      # Click checkout button
+      - type: click
+        selector: button.checkout-btn
+        waitForSelector: true
+
+      # Wait for checkout page to load
+      - type: wait
+        for: selector
+        selector: form.checkout-form
+        timeout: 10000
+
+      # Wait for begin_checkout event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: begin_checkout
+        timeout: 5000
+
+      # Verify checkout form is visible
+      - type: assert
+        assertType: visible
+        selector: form.checkout-form
+        message: Checkout form should be visible
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/04-begin-checkout.png
+        fullPage: true
+
+    captureAnalytics: true
+
+  - id: step-5-add-shipping-info
+    name: Add Shipping Information
+    description: Fill shipping details and verify add_shipping_info event
+    actions:
+      # Fill email
+      - type: type
+        selector: input[name="email"]
+        value: test@example.com
+        clear: true
+
+      # Fill first name
+      - type: type
+        selector: input[name="firstName"]
+        value: John
+
+      # Fill last name
+      - type: type
+        selector: input[name="lastName"]
+        value: Doe
+
+      # Fill address
+      - type: type
+        selector: input[name="address"]
+        value: 123 Main St
+
+      # Fill city
+      - type: type
+        selector: input[name="city"]
+        value: Anytown
+
+      # Fill zip code
+      - type: type
+        selector: input[name="zipCode"]
+        value: 12345
+
+      # Click continue to payment
+      - type: click
+        selector: button.continue-to-payment
+
+      # Wait for add_shipping_info event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: add_shipping_info
+        timeout: 5000
+
+      # Wait for payment section
+      - type: wait
+        for: selector
+        selector: .payment-section
+        timeout: 10000
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/05-shipping-info.png
+        fullPage: true
+
+    captureAnalytics: true
+
+  - id: step-6-add-payment-info
+    name: Add Payment Information
+    description: Fill payment details and verify add_payment_info event
+    actions:
+      # Fill card number (test card)
+      - type: type
+        selector: input[name="cardNumber"]
+        value: "4242424242424242"
+        clear: true
+
+      # Fill expiry
+      - type: type
+        selector: input[name="expiry"]
+        value: "12/25"
+
+      # Fill CVV
+      - type: type
+        selector: input[name="cvv"]
+        value: "123"
+
+      # Click review order
+      - type: click
+        selector: button.review-order
+
+      # Wait for add_payment_info event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: add_payment_info
+        timeout: 5000
+
+      # Wait for order review section
+      - type: wait
+        for: selector
+        selector: .order-review
+        timeout: 10000
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/06-payment-info.png
+        fullPage: true
+
+    captureAnalytics: true
+
+  - id: step-7-complete-purchase
+    name: Complete Purchase
+    description: Submit order and verify purchase event
+    actions:
+      # Click place order button
+      - type: click
+        selector: button.place-order
+        waitForSelector: true
+
+      # Wait for purchase event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: purchase
+        timeout: 10000
+
+      # Wait for confirmation page
+      - type: wait
+        for: selector
+        selector: .order-confirmation
+        timeout: 15000
+
+      # Verify confirmation message
+      - type: assert
+        assertType: visible
+        selector: .order-confirmation
+        message: Order confirmation should be visible
+
+      # Verify order number is present
+      - type: assert
+        assertType: visible
+        selector: .order-number
+        message: Order number should be displayed
+
+      # Assert URL contains confirmation
+      - type: assert
+        assertType: url
+        expected: /order-confirmation
+        operator: contains
+        message: URL should contain order-confirmation
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/ecommerce/07-purchase-complete.png
+        fullPage: true
+
+    captureAnalytics: true

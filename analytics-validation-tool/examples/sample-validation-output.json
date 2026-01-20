@@ -1,0 +1,248 @@
+{
+  "id": "1703123480000-val001",
+  "scanId": "1703123456789-abc123def",
+  "detectionId": "1703123470000-det001",
+  "url": "https://www.example.com/products/widget",
+  "environment": "production",
+  "startedAt": 1703123480000,
+  "completedAt": 1703123481523,
+  "duration": 1523,
+  "results": [
+    {
+      "ruleId": "ga4-presence",
+      "ruleName": "GA4 Tag Must Be Present",
+      "status": "passed",
+      "severity": "error",
+      "message": "Found 1 tag(s) as expected",
+      "details": "Ensures Google Analytics 4 is installed on the page",
+      "platform": "ga4",
+      "evidence": [
+        {
+          "type": "tag",
+          "description": "Found Google Analytics 4 tag",
+          "actual": "ga4",
+          "ref": {
+            "id": "1703123470200-tag002",
+            "timestamp": 1703123457100
+          }
+        }
+      ],
+      "timestamp": 1703123480100,
+      "duration": 12
+    },
+    {
+      "ruleId": "ga4-payload-validation",
+      "ruleName": "GA4 Collect Payload Validation",
+      "status": "passed",
+      "severity": "error",
+      "message": "All 2 matching request(s) have valid payloads",
+      "details": "Ensures GA4 tracking requests contain required parameters",
+      "platform": "ga4",
+      "evidence": [
+        {
+          "type": "request",
+          "description": "Field tid is valid",
+          "actual": "G-XXXXXXXXXX",
+          "ref": {
+            "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-XXXXXXXXXX&..."
+          }
+        },
+        {
+          "type": "request",
+          "description": "Field v is valid",
+          "actual": "2",
+          "ref": {
+            "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-XXXXXXXXXX&..."
+          }
+        },
+        {
+          "type": "request",
+          "description": "Field cid is valid",
+          "actual": "123456.789012",
+          "ref": {
+            "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-XXXXXXXXXX&..."
+          }
+        },
+        {
+          "type": "request",
+          "description": "Field en is valid",
+          "actual": "page_view",
+          "ref": {
+            "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-XXXXXXXXXX&..."
+          }
+        },
+        {
+          "type": "request",
+          "description": "Validated 2 request(s)",
+          "actual": "2 requests passed"
+        }
+      ],
+      "timestamp": 1703123480150,
+      "duration": 45
+    },
+    {
+      "ruleId": "ga4-consent-compliance",
+      "ruleName": "GA4 Consent Compliance",
+      "status": "failed",
+      "severity": "error",
+      "message": "VIOLATION: ga4 tag fired 1500ms before consent was granted",
+      "details": "Ensures GA4 only fires after user consent is granted",
+      "platform": "ga4",
+      "evidence": [
+        {
+          "type": "tag",
+          "description": "Tag ga4 loaded",
+          "actual": 1703123457100,
+          "ref": {
+            "id": "1703123470200-tag002",
+            "timestamp": 1703123457100
+          }
+        },
+        {
+          "type": "dataLayer",
+          "description": "Consent event found: consent_update",
+          "actual": 1703123458600,
+          "ref": {
+            "timestamp": 1703123458600
+          }
+        },
+        {
+          "type": "timing",
+          "description": "Time difference between consent and tag: -1500ms",
+          "actual": -1500
+        }
+      ],
+      "suggestion": "Ensure consent is collected before initializing analytics tags",
+      "timestamp": 1703123480200,
+      "duration": 23
+    },
+    {
+      "ruleId": "gtm-before-ga4",
+      "ruleName": "GTM Must Load Before GA4",
+      "status": "passed",
+      "severity": "warning",
+      "message": "Correct order: gtm loaded 6250ms before ga4",
+      "details": "Ensures Google Tag Manager loads before GA4 tag fires",
+      "evidence": [
+        {
+          "type": "tag",
+          "description": "Found tag: gtm",
+          "actual": 1703123456850,
+          "ref": {
+            "id": "1703123470100-tag001",
+            "timestamp": 1703123456850
+          }
+        },
+        {
+          "type": "tag",
+          "description": "Found tag: ga4",
+          "actual": 1703123457100,
+          "ref": {
+            "id": "1703123470200-tag002",
+            "timestamp": 1703123457100
+          }
+        },
+        {
+          "type": "timing",
+          "description": "Time difference: 250ms",
+          "actual": 250,
+          "ref": {
+            "timestamp": 1703123456850
+          }
+        },
+        {
+          "type": "timing",
+          "description": "Max allowed time difference",
+          "expected": 5000,
+          "actual": 250
+        }
+      ],
+      "timestamp": 1703123480250,
+      "duration": 18
+    },
+    {
+      "ruleId": "datalayer-page-view",
+      "ruleName": "Data Layer Page View Event",
+      "status": "failed",
+      "severity": "error",
+      "message": "1 of 1 data layer event(s) failed validation",
+      "details": "Validates that page_view events in the data layer have required fields",
+      "evidence": [
+        {
+          "type": "dataLayer",
+          "description": "Event 0 failed validation",
+          "actual": "Field page_location must be a valid URL; Field user_id has wrong type: expected string, got undefined",
+          "ref": {
+            "timestamp": 1703123457000
+          }
+        }
+      ],
+      "timestamp": 1703123480300,
+      "duration": 35
+    },
+    {
+      "ruleId": "meta-pixel-presence",
+      "ruleName": "Meta Pixel Should Not Be Present",
+      "status": "failed",
+      "severity": "warning",
+      "message": "Expected tag to be absent but found 1",
+      "details": "Meta Pixel should not be installed on this page type",
+      "platform": "meta-pixel",
+      "evidence": [
+        {
+          "type": "tag",
+          "description": "Found Meta Pixel tag",
+          "actual": "meta-pixel",
+          "ref": {
+            "id": "1703123470300-tag003",
+            "timestamp": 1703123457400
+          }
+        },
+        {
+          "type": "tag",
+          "description": "Expected condition",
+          "expected": "Should not exist",
+          "actual": 1
+        }
+      ],
+      "timestamp": 1703123480350,
+      "duration": 8
+    }
+  ],
+  "summary": {
+    "totalRules": 6,
+    "passed": 3,
+    "failed": 3,
+    "skipped": 0,
+    "errors": 0,
+    "bySeverity": {
+      "error": 4,
+      "warning": 2,
+      "info": 0
+    },
+    "byPlatform": {
+      "ga4": {
+        "passed": 2,
+        "failed": 2,
+        "warnings": 0
+      },
+      "meta-pixel": {
+        "passed": 0,
+        "failed": 1,
+        "warnings": 1
+      }
+    },
+    "score": 50,
+    "isValid": false
+  },
+  "rulesLoaded": [
+    "ga4-presence",
+    "ga4-payload-validation",
+    "ga4-consent-compliance",
+    "gtm-before-ga4",
+    "datalayer-page-view",
+    "meta-pixel-presence"
+  ],
+  "ruleErrors": [],
+  "engineVersion": "1.0.0"
+}

@@ -1,0 +1,42 @@
+# Adobe Analytics Protocol Rule: Beacon Validation
+# Validates Adobe Analytics beacon structure
+
+id: adobe-protocol-001
+name: Adobe Analytics Beacon Must Be Valid
+description: |
+  Adobe Analytics beacons must be sent to /b/ss/ endpoint.
+  Invalid beacons result in data loss.
+type: payload
+severity: error
+category: protocol
+platform: adobe-analytics
+environments:
+  - production
+  - staging
+
+enabled: true
+
+target:
+  urlPattern: /b/ss/
+  method: POST
+
+source: query
+
+fields:
+  - name: c.
+    required: false
+    message: Context data (c.) prefix for mobile SDK
+
+  - name: v
+    required: false
+    message: Visitor ID service
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: none
+  remediation: |
+    Ensure AppMeasurement.js is configured correctly
+    Verify tracking server setting in s_code.js
+  documentation: https://experienceleague.adobe.com/docs/analytics/implementation/vars/page-vars/pagename.html

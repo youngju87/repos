@@ -1,0 +1,61 @@
+# GA4 Events Rule: Page View Event
+# Validates page_view event structure
+
+id: ga4-events-002
+name: Page View Event Must Fire on All Pages
+description: |
+  Every page should send a page_view event for basic analytics.
+  Missing page views = incomplete traffic data.
+type: data-layer
+severity: error
+category: events
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+dataLayerName: dataLayer
+eventName: page_view
+
+requiredKeys:
+  - event
+  - page_title
+  - page_location
+
+forbiddenKeys:
+  - user_email
+  - credit_card
+  - password
+
+namingPattern: ^[a-z][a-z0-9_]*$
+
+assertions:
+  - field: event
+    type: equals
+    value: page_view
+    message: Event must be page_view
+
+  - field: page_title
+    type: required
+    message: page_title is required for page_view events
+
+  - field: page_location
+    type: required
+    message: page_location (full URL) is required
+
+  - field: page_location
+    type: matches
+    pattern: ^https?://
+    message: page_location must be a valid URL
+
+metadata:
+  impact: critical
+  falsePositives: |
+    - Single-page apps may fire page_view via virtual pageviews
+    - Some pages intentionally don't track (admin, internal tools)
+  remediation: |
+    Ensure page_view event fires on every page load
+    For SPAs, fire page_view on route changes
+  documentation: https://developers.google.com/analytics/devguides/collection/ga4/views

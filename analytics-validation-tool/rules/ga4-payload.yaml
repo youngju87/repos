@@ -1,0 +1,59 @@
+# GA4 Payload Validation Rule
+# Validates GA4 collect endpoint payloads
+
+id: ga4-payload-validation
+name: GA4 Collect Payload Validation
+description: Ensures GA4 tracking requests contain required parameters
+type: payload
+severity: error
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+# Target network requests
+target:
+  urlPattern: google-analytics\.com/g/collect
+  method: POST
+  platform: ga4
+
+# Where to find the data
+source: query
+
+# Fields to validate
+fields:
+  # Measurement ID is required
+  - name: tid
+    required: true
+    pattern: ^G-[A-Z0-9]+$
+    message: Measurement ID (tid) must be present and match G-XXXXX format
+
+  # API version
+  - name: v
+    required: true
+    value: "2"
+    message: GA4 API version must be 2
+
+  # Client ID is required
+  - name: cid
+    required: true
+    pattern: ^\d+\.\d+$
+    message: Client ID must be present and in format NNNN.NNNN
+
+  # Event name is required
+  - name: en
+    required: true
+    type: string
+    message: Event name (en) is required
+
+  # Session ID should be numeric
+  - name: sid
+    required: false
+    type: string
+    pattern: ^\d+$
+    message: Session ID should be numeric
+
+# Assertions (additional validations)
+assertions: []

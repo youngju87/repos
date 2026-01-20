@@ -1,0 +1,116 @@
+# User Registration Journey
+# Validates analytics during new user signup flow
+
+id: user-registration-001
+name: User Registration Journey
+description: |
+  Complete user registration flow from landing page to successful signup.
+  Validates form interactions and conversion events.
+
+startUrl: https://example.com/signup
+
+config:
+  defaultTimeout: 20000
+  captureScreenshots: true
+  continueOnFailure: false
+
+steps:
+  - id: step-1-landing
+    name: Signup Page Landing
+    description: Land on signup page and verify initial page view
+    actions:
+      # Wait for signup form
+      - type: wait
+        for: selector
+        selector: form.signup-form
+        timeout: 10000
+
+      # Wait for page_view event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: page_view
+        timeout: 5000
+
+      # Verify form is visible
+      - type: assert
+        assertType: visible
+        selector: form.signup-form
+        message: Signup form should be visible
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/signup/01-landing.png
+
+    captureAnalytics: true
+
+  - id: step-2-fill-form
+    name: Fill Registration Form
+    description: Fill out registration form fields
+    actions:
+      # Fill email
+      - type: type
+        selector: input[name="email"]
+        value: newuser@example.com
+        clear: true
+
+      # Fill username
+      - type: type
+        selector: input[name="username"]
+        value: testuser123
+
+      # Fill password
+      - type: type
+        selector: input[name="password"]
+        value: SecurePass123!
+
+      # Fill confirm password
+      - type: type
+        selector: input[name="confirmPassword"]
+        value: SecurePass123!
+
+      # Accept terms checkbox
+      - type: click
+        selector: input[type="checkbox"][name="terms"]
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/signup/02-form-filled.png
+
+    captureAnalytics: false
+
+  - id: step-3-submit-registration
+    name: Submit Registration
+    description: Submit form and verify sign_up event
+    actions:
+      # Click submit button
+      - type: submit
+        selector: button[type="submit"]
+        waitForNavigation: true
+        waitUntil: domcontentloaded
+
+      # Wait for sign_up event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: sign_up
+        timeout: 5000
+
+      # Verify welcome page or success message
+      - type: assert
+        assertType: visible
+        selector: .welcome-message, .signup-success
+        message: Welcome message should appear
+
+      # Assert URL changed
+      - type: assert
+        assertType: url
+        expected: /welcome
+        operator: contains
+        message: Should redirect to welcome page
+
+      # Take screenshot
+      - type: screenshot
+        path: screenshots/signup/03-registration-complete.png
+
+    captureAnalytics: true

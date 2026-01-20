@@ -1,0 +1,73 @@
+# Data Layer Validation Rule
+# Validates data layer structure and content
+
+id: datalayer-page-view
+name: Data Layer Page View Event
+description: Validates that page_view events in the data layer have required fields
+type: data-layer
+severity: error
+environments:
+  - production
+  - staging
+
+enabled: true
+
+# Data layer to validate
+dataLayerName: dataLayer
+
+# Specific event to validate (optional)
+eventName: page_view
+
+# Required keys that must be present
+requiredKeys:
+  - event
+  - page_title
+  - page_location
+  - page_path
+
+# Keys that should NOT be present
+forbiddenKeys:
+  - pii_email
+  - credit_card
+  - ssn
+
+# Naming convention for keys (regex)
+namingPattern: ^[a-z][a-z0-9_]*$
+
+# Schema validation (optional)
+schema:
+  event: string
+  page_title: string
+  page_location: string
+  page_path: string
+  user_id: string
+
+# Additional assertions
+assertions:
+  # Event name must be 'page_view'
+  - field: event
+    type: equals
+    value: page_view
+    message: Event must be 'page_view'
+
+  # Page title must be a non-empty string
+  - field: page_title
+    type: required
+    message: Page title is required
+
+  - field: page_title
+    type: type
+    dataType: string
+    message: Page title must be a string
+
+  # Page location must be a valid URL
+  - field: page_location
+    type: matches
+    pattern: ^https?://
+    message: Page location must be a valid URL
+
+  # Page path must start with /
+  - field: page_path
+    type: matches
+    pattern: ^/
+    message: Page path must start with /

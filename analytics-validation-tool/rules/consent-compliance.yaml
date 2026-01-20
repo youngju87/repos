@@ -1,0 +1,38 @@
+# Consent Compliance Rule
+# Ensures analytics tags only fire after user consent
+
+id: ga4-consent-compliance
+name: GA4 Consent Compliance
+description: Ensures GA4 only fires after user consent is granted
+type: consent
+severity: error
+platform: ga4
+environments:
+  - production
+
+enabled: true
+
+# Consent must be granted before tag fires
+requireConsentBefore: true
+
+# Where to find the consent signal
+consentSignal:
+  source: dataLayer
+  name: dataLayer
+  # Looking for consent event in data layer
+  # The handler will check for events where event.data.event matches this
+
+# For cookie-based consent:
+# consentSignal:
+#   source: cookie
+#   name: cookie_consent
+#   value: "granted"
+
+# For localStorage-based consent:
+# consentSignal:
+#   source: localStorage
+#   name: analytics_consent
+#   value: "true"
+
+# Assertions (not used for consent rules)
+assertions: []

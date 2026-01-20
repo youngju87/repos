@@ -1,0 +1,42 @@
+# GA4 Foundation Rule: Valid Measurement ID
+# Ensures measurement ID follows correct format
+
+id: ga4-foundation-002
+name: GA4 Measurement ID Format Validation
+description: |
+  Ensures GA4 measurement ID follows G-XXXXXXXXXX format.
+  Invalid IDs will result in failed data collection.
+type: payload
+severity: error
+category: foundation
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+target:
+  urlPattern: google-analytics\.com/g/collect
+  method: POST
+
+source: query
+
+fields:
+  - name: tid
+    required: true
+    pattern: ^G-[A-Z0-9]{10}$
+    message: |
+      Measurement ID must be in format G-XXXXXXXXXX (10 alphanumeric characters)
+      Current format is invalid and will cause data loss
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: none
+  remediation: |
+    1. Verify measurement ID in GA4 admin > Data Streams
+    2. Update configuration in GTM or gtag.js
+    3. Ensure correct ID for environment (prod vs staging)
+  documentation: https://support.google.com/analytics/answer/9539598

@@ -1,0 +1,123 @@
+# Content Engagement Journey
+# Validates analytics for content browsing and engagement
+
+id: content-engagement-001
+name: Content Engagement Journey
+description: |
+  Browse content, engage with elements, and validate engagement events.
+  Tests scroll tracking, video plays, and content interactions.
+
+startUrl: https://example.com/blog
+
+config:
+  defaultTimeout: 15000
+  captureScreenshots: false
+  continueOnFailure: true
+
+steps:
+  - id: step-1-blog-landing
+    name: Blog Landing Page
+    description: Land on blog listing page
+    actions:
+      # Wait for blog posts to load
+      - type: wait
+        for: selector
+        selector: .blog-posts
+        timeout: 10000
+
+      # Verify multiple posts exist
+      - type: assert
+        assertType: count
+        selector: .blog-post-card
+        expected: 3
+        operator: greaterThan
+        message: Should show multiple blog posts
+
+    captureAnalytics: true
+
+  - id: step-2-click-article
+    name: Open Blog Article
+    description: Click on first article and verify view_item event
+    actions:
+      # Click first article
+      - type: click
+        selector: .blog-post-card:first-child a
+        waitForSelector: true
+
+      # Wait for article to load
+      - type: wait
+        for: selector
+        selector: article.blog-content
+        timeout: 10000
+
+      # Wait for view_item event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: view_item
+        timeout: 5000
+
+      # Verify article title is visible
+      - type: assert
+        assertType: visible
+        selector: article h1
+        message: Article title should be visible
+
+    captureAnalytics: true
+
+  - id: step-3-scroll-engagement
+    name: Scroll Through Article
+    description: Scroll to trigger engagement events
+    actions:
+      # Scroll to 25%
+      - type: wait
+        for: timeout
+        duration: 2000
+
+      # Scroll to 50%
+      - type: wait
+        for: timeout
+        duration: 2000
+
+      # Scroll to 75%
+      - type: wait
+        for: timeout
+        duration: 2000
+
+      # Scroll to bottom
+      - type: wait
+        for: selector
+        selector: footer
+        timeout: 5000
+
+      # Wait for scroll engagement event
+      - type: wait
+        for: dataLayer
+        dataLayerName: dataLayer
+        eventName: scroll
+        timeout: 5000
+
+    captureAnalytics: true
+
+  - id: step-4-related-content
+    name: Click Related Content
+    description: Click related article link
+    actions:
+      # Click related article
+      - type: click
+        selector: .related-articles a:first-child
+
+      # Wait for new article
+      - type: wait
+        for: selector
+        selector: article.blog-content
+        timeout: 10000
+
+      # Verify URL changed
+      - type: assert
+        assertType: url
+        expected: /blog/
+        operator: contains
+        message: Should navigate to another blog post
+
+    captureAnalytics: true

@@ -1,0 +1,345 @@
+{
+  "id": "1703123470000-det001",
+  "scanId": "1703123456789-abc123def",
+  "url": "https://www.example.com/products/widget",
+  "startedAt": 1703123470000,
+  "completedAt": 1703123470523,
+  "duration": 523,
+  "tags": [
+    {
+      "id": "1703123470100-tag001",
+      "platform": "gtm",
+      "platformName": "Google Tag Manager",
+      "category": "tag-manager",
+      "loadMethod": "direct",
+      "confidence": 0.95,
+      "detectionMethods": ["script-url", "script-content", "data-layer"],
+      "evidence": [
+        {
+          "method": "script-url",
+          "matched": "GTM container script",
+          "value": "GTM-XXXXX",
+          "confidence": 0.9,
+          "context": {
+            "scriptUrl": "https://www.googletagmanager.com/gtm.js?id=GTM-XXXXX",
+            "containerId": "GTM-XXXXX"
+          }
+        },
+        {
+          "method": "script-content",
+          "matched": "GTM installation snippet",
+          "value": "GTM-XXXXX",
+          "confidence": 0.9,
+          "context": {
+            "scriptId": "1703123456860-script002"
+          }
+        },
+        {
+          "method": "data-layer",
+          "matched": "gtm.start timestamp",
+          "value": "gtm.start",
+          "confidence": 0.9,
+          "context": {
+            "hasGtmJs": true,
+            "hasGtmDom": true,
+            "hasGtmLoad": true
+          }
+        }
+      ],
+      "config": {
+        "primaryId": "GTM-XXXXX",
+        "properties": {
+          "containerIds": ["GTM-XXXXX"],
+          "dataLayerName": "dataLayer",
+          "hasDataLayer": true,
+          "dataLayerEventCount": 15
+        }
+      },
+      "scriptUrls": [
+        "https://www.googletagmanager.com/gtm.js?id=GTM-XXXXX"
+      ],
+      "endpoints": [],
+      "networkRequestIds": [],
+      "dataLayerEventIds": [],
+      "firstSeenAt": 1703123456850,
+      "lastSeenAt": 1703123470000,
+      "isActive": true,
+      "hasErrors": false
+    },
+    {
+      "id": "1703123470200-tag002",
+      "platform": "ga4",
+      "platformName": "Google Analytics 4",
+      "category": "analytics",
+      "loadMethod": "gtm",
+      "loadedVia": "Google Tag Manager",
+      "confidence": 0.92,
+      "detectionMethods": ["script-url", "script-content", "network-endpoint", "network-payload"],
+      "evidence": [
+        {
+          "method": "script-url",
+          "matched": "gtag.js with measurement ID",
+          "value": "G-XXXXXXXXXX",
+          "confidence": 0.9,
+          "context": {
+            "scriptUrl": "https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX",
+            "measurementId": "G-XXXXXXXXXX"
+          }
+        },
+        {
+          "method": "script-content",
+          "matched": "gtag config call",
+          "value": "G-XXXXXXXXXX",
+          "confidence": 0.9,
+          "context": {
+            "scriptId": "1703123456860-script002",
+            "configCall": "gtag('config', 'G-XXXXXXXXXX')"
+          }
+        },
+        {
+          "method": "network-payload",
+          "matched": "GA4 collect with measurement ID",
+          "value": "G-XXXXXXXXXX",
+          "confidence": 0.9,
+          "context": {
+            "requestId": "1703123458000-req003",
+            "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-XXXXXXXXXX&...",
+            "eventName": "page_view"
+          }
+        },
+        {
+          "method": "cookie",
+          "matched": "_ga cookie",
+          "value": "_ga",
+          "confidence": 0.4,
+          "context": {
+            "cookieName": "_ga"
+          }
+        }
+      ],
+      "config": {
+        "primaryId": "G-XXXXXXXXXX",
+        "properties": {
+          "measurementIds": ["G-XXXXXXXXXX"]
+        }
+      },
+      "scriptUrls": [
+        "https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"
+      ],
+      "endpoints": [
+        "https://www.google-analytics.com/g/collect"
+      ],
+      "networkRequestIds": [
+        "1703123458000-req003",
+        "1703123459500-req005"
+      ],
+      "dataLayerEventIds": [],
+      "firstSeenAt": 1703123457100,
+      "lastSeenAt": 1703123459500,
+      "isActive": true,
+      "hasErrors": false
+    },
+    {
+      "id": "1703123470300-tag003",
+      "platform": "meta-pixel",
+      "platformName": "Meta Pixel",
+      "category": "advertising",
+      "loadMethod": "gtm",
+      "confidence": 0.88,
+      "detectionMethods": ["script-url", "script-content", "network-endpoint", "cookie"],
+      "evidence": [
+        {
+          "method": "script-url",
+          "matched": "Meta Pixel fbevents.js",
+          "value": "https://connect.facebook.net/en_US/fbevents.js",
+          "confidence": 0.9,
+          "context": {
+            "scriptUrl": "https://connect.facebook.net/en_US/fbevents.js"
+          }
+        },
+        {
+          "method": "script-content",
+          "matched": "fbq init call",
+          "value": "123456789012345",
+          "confidence": 0.9,
+          "context": {
+            "scriptId": "1703123457400-script003",
+            "pixelId": "123456789012345"
+          }
+        },
+        {
+          "method": "script-content",
+          "matched": "fbq track call",
+          "value": "PageView",
+          "confidence": 0.6,
+          "context": {
+            "scriptId": "1703123457400-script003",
+            "eventName": "PageView"
+          }
+        },
+        {
+          "method": "network-endpoint",
+          "matched": "Meta Pixel tracking call",
+          "value": "id:123456789012345, ev:PageView",
+          "confidence": 0.9,
+          "context": {
+            "requestId": "1703123459000-req004",
+            "pixelId": "123456789012345",
+            "eventName": "PageView",
+            "url": "https://www.facebook.com/tr/?id=123456789012345&ev=PageView&..."
+          }
+        },
+        {
+          "method": "cookie",
+          "matched": "_fbp cookie",
+          "value": "_fbp",
+          "confidence": 0.6,
+          "context": {
+            "cookieName": "_fbp"
+          }
+        }
+      ],
+      "config": {
+        "primaryId": "123456789012345",
+        "properties": {
+          "pixelIds": ["123456789012345"],
+          "trackedEvents": ["PageView", "ViewContent"]
+        },
+        "enabledFeatures": ["PageView", "ViewContent"]
+      },
+      "scriptUrls": [
+        "https://connect.facebook.net/en_US/fbevents.js"
+      ],
+      "endpoints": [
+        "https://www.facebook.com/tr/"
+      ],
+      "networkRequestIds": [
+        "1703123459000-req004",
+        "1703123460000-req006"
+      ],
+      "dataLayerEventIds": [],
+      "firstSeenAt": 1703123457400,
+      "lastSeenAt": 1703123460000,
+      "isActive": true,
+      "hasErrors": false
+    },
+    {
+      "id": "1703123470400-tag004",
+      "platform": "unknown",
+      "platformName": "Unknown Tag (analytics.example-tracking.com)",
+      "category": "custom",
+      "loadMethod": "unknown",
+      "confidence": 0.35,
+      "detectionMethods": ["network-endpoint", "network-payload"],
+      "evidence": [
+        {
+          "method": "network-endpoint",
+          "matched": "Domain contains tracking keyword: analytics",
+          "value": "analytics.example-tracking.com",
+          "confidence": 0.25,
+          "context": {
+            "domain": "analytics.example-tracking.com",
+            "keyword": "analytics"
+          }
+        },
+        {
+          "method": "network-endpoint",
+          "matched": "URL contains tracking keyword: track",
+          "value": "track",
+          "confidence": 0.1,
+          "context": {
+            "requestId": "1703123458500-req007",
+            "keyword": "track"
+          }
+        },
+        {
+          "method": "network-payload",
+          "matched": "Request has tracking parameters",
+          "value": "event, uid, timestamp",
+          "confidence": 0.25,
+          "context": {
+            "requestId": "1703123458500-req007"
+          }
+        }
+      ],
+      "config": {
+        "properties": {
+          "domain": "analytics.example-tracking.com",
+          "requestCount": 3,
+          "endpoints": [
+            "https://analytics.example-tracking.com/track",
+            "https://analytics.example-tracking.com/collect"
+          ]
+        }
+      },
+      "scriptUrls": [],
+      "endpoints": [
+        "https://analytics.example-tracking.com/track",
+        "https://analytics.example-tracking.com/collect"
+      ],
+      "networkRequestIds": [
+        "1703123458500-req007",
+        "1703123459200-req008",
+        "1703123460500-req009"
+      ],
+      "dataLayerEventIds": [],
+      "firstSeenAt": 1703123458500,
+      "lastSeenAt": 1703123460500,
+      "isActive": true,
+      "hasErrors": false
+    }
+  ],
+  "summary": {
+    "totalTags": 4,
+    "byCategory": {
+      "analytics": 1,
+      "tag-manager": 1,
+      "advertising": 1,
+      "social": 0,
+      "session-recording": 0,
+      "heatmap": 0,
+      "ab-testing": 0,
+      "personalization": 0,
+      "cdp": 0,
+      "chat": 0,
+      "crm": 0,
+      "email": 0,
+      "consent": 0,
+      "error-tracking": 0,
+      "performance": 0,
+      "custom": 1,
+      "other": 0
+    },
+    "byPlatform": {
+      "gtm": 1,
+      "ga4": 1,
+      "meta-pixel": 1,
+      "unknown": 1
+    },
+    "byLoadMethod": {
+      "direct": 1,
+      "gtm": 2,
+      "adobe-launch": 0,
+      "tealium": 0,
+      "segment": 0,
+      "other-tms": 0,
+      "dynamic": 0,
+      "unknown": 1
+    },
+    "highConfidenceCount": 3,
+    "lowConfidenceCount": 1,
+    "unknownTagCount": 1,
+    "hasTMS": true,
+    "detectedTMS": ["gtm"]
+  },
+  "detectorsRun": [
+    "gtm",
+    "ga4",
+    "adobe-analytics",
+    "segment",
+    "meta-pixel",
+    "unknown-tag"
+  ],
+  "detectorErrors": [],
+  "engineVersion": "1.0.0"
+}

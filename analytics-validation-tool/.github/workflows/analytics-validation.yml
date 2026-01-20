@@ -1,0 +1,76 @@
+# GitHub Actions Workflow for Analytics Validation
+#
+# This workflow runs analytics validation on every PR and push to main.
+# It fails the build if validation errors are found.
+
+name: Analytics Validation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  validate:
+    name: Validate Analytics Implementation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run analytics validation
+        id: validation
+        env:
+          NODE_ENV: production
+          MAX_ERRORS: 0
+          MAX_WARNINGS: 10
+          MIN_SCORE: 80
+          FAIL_ON_WARNINGS: false
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          npx ts-node examples/ci-cd-integration.ts \
+            https://example.com \
+            https://example.com/products
+
+      - name: Upload JSON report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: analytics-report
+          path: |
+            analytics-report.json
+            analytics-report.md
+          retention-days: 30
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('analytics-report.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: report
+            });
+
+      - name: Fail if validation failed
+        if: steps.validation.outcome == 'failure'
+        run: exit 1

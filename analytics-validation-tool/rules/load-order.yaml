@@ -1,0 +1,30 @@
+# Load Order Rule
+# Ensures tags load in the correct sequence
+
+id: gtm-before-ga4
+name: GTM Must Load Before GA4
+description: Ensures Google Tag Manager loads before GA4 tag fires
+type: order
+severity: warning
+environments:
+  - production
+  - staging
+
+enabled: true
+
+# What must load first
+before:
+  type: tag
+  identifier: gtm
+
+# What must load after
+after:
+  type: tag
+  identifier: ga4
+
+# Maximum allowed time difference (optional)
+# If GA4 loads more than 5000ms after GTM, this is a warning
+maxTimeDifference: 5000
+
+# Assertions (not used for order rules)
+assertions: []

@@ -1,0 +1,38 @@
+# Consent Rule: GA4 Consent Timing
+# Ensures GA4 waits for consent before firing
+
+id: consent-ga4-001
+name: GA4 Must Wait for User Consent
+description: |
+  GA4 tags must not fire before user consent is granted.
+  Pre-consent tracking violates GDPR/CCPA requirements.
+type: consent
+severity: error
+category: consent
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+requireConsentBefore: true
+
+consentSignal:
+  source: dataLayer
+  name: dataLayer
+  # Looks for consent_update event or consent granted state
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: |
+    - Some regions don't require consent (non-EU/CA traffic)
+    - Consent may be implied for certain use cases
+  remediation: |
+    1. Implement Google Consent Mode v2
+    2. Block GA4 tags until consent is granted
+    3. Use OneTrust, Cookiebot, or similar CMP
+  documentation: https://support.google.com/analytics/answer/9976101
+  compliance: GDPR Article 7, CCPA 1798.120

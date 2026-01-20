@@ -1,0 +1,37 @@
+# Adobe Analytics Foundation Rule: AppMeasurement Presence
+# Verifies Adobe Analytics tracking is installed
+
+id: adobe-foundation-001
+name: Adobe Analytics AppMeasurement Must Be Present
+description: |
+  Verifies Adobe Analytics is installed via AppMeasurement.js or Web SDK.
+  Missing Adobe Analytics means zero data collection.
+type: presence
+severity: error
+category: foundation
+platform: adobe-analytics
+environments:
+  - production
+  - staging
+
+enabled: true
+
+target:
+  type: tag
+  platform: adobe-analytics
+
+shouldExist: true
+minCount: 1
+maxCount: 1
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: |
+    - Some pages may intentionally exclude Adobe Analytics
+    - Web SDK implementations may look different
+  remediation: |
+    Add Adobe Analytics via Adobe Launch or AppMeasurement.js
+    Verify report suite ID is correct for this environment
+  documentation: https://experienceleague.adobe.com/docs/analytics/implementation/home.html

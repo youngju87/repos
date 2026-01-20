@@ -1,0 +1,338 @@
+{
+  "id": "1703123456789-abc123def",
+  "url": "https://example.com/products/widget",
+  "finalUrl": "https://www.example.com/products/widget",
+  "success": true,
+  "startedAt": 1703123456789,
+  "completedAt": 1703123462000,
+  "timings": {
+    "navigationStart": 1703123456800,
+    "domContentLoaded": 1234,
+    "loadEvent": 2567,
+    "firstPaint": 456,
+    "firstContentfulPaint": 678,
+    "ttfb": 234,
+    "scanDuration": 5211
+  },
+  "httpStatus": 200,
+  "pageTitle": "Widget Product Page | Example Store",
+  "metaTags": {
+    "description": "Buy the best widgets at Example Store",
+    "og:title": "Widget Product Page",
+    "og:type": "product"
+  },
+  "networkRequests": [
+    {
+      "id": "1703123456800-req001",
+      "url": "https://www.example.com/products/widget",
+      "method": "GET",
+      "resourceType": "document",
+      "requestHeaders": {
+        "accept": "text/html,application/xhtml+xml",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      "status": 200,
+      "statusText": "OK",
+      "responseHeaders": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "max-age=3600"
+      },
+      "initiatedAt": 1703123456800,
+      "responseReceivedAt": 1703123457034,
+      "completedAt": 1703123457200,
+      "duration": 400,
+      "initiator": {
+        "type": "other"
+      },
+      "failed": false,
+      "fromCache": false,
+      "isAnalyticsRequest": false,
+      "isMainFrame": true
+    },
+    {
+      "id": "1703123457100-req002",
+      "url": "https://www.googletagmanager.com/gtm.js?id=GTM-XXXXX",
+      "method": "GET",
+      "resourceType": "script",
+      "requestHeaders": {
+        "accept": "*/*",
+        "referer": "https://www.example.com/"
+      },
+      "status": 200,
+      "statusText": "OK",
+      "initiatedAt": 1703123457100,
+      "completedAt": 1703123457350,
+      "duration": 250,
+      "initiator": {
+        "type": "parser",
+        "url": "https://www.example.com/products/widget",
+        "lineNumber": 45
+      },
+      "failed": false,
+      "fromCache": false,
+      "isAnalyticsRequest": true,
+      "isMainFrame": true
+    },
+    {
+      "id": "1703123458000-req003",
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-XXXXXXXXXX&gtm=45je4580v9170038424z89170038404za200&_p=123456789&gcd=13l3l3l3l1&npa=0&dma=0&cid=1234567890.1703000000&ul=en-us&sr=1920x1080&uaa=x86&uab=64&uafvl=Chrome%3B120.0.6099.109&uamb=0&uam=&uap=Windows&uapv=10.0.0&uaw=0&_s=1&sid=1703123400&sct=1&seg=1&dl=https%3A%2F%2Fwww.example.com%2Fproducts%2Fwidget&dt=Widget%20Product%20Page&en=page_view",
+      "method": "POST",
+      "resourceType": "ping",
+      "requestHeaders": {
+        "content-type": "text/plain;charset=UTF-8"
+      },
+      "queryParams": {
+        "v": "2",
+        "tid": "G-XXXXXXXXXX",
+        "en": "page_view",
+        "dl": "https://www.example.com/products/widget",
+        "dt": "Widget Product Page"
+      },
+      "status": 204,
+      "initiatedAt": 1703123458000,
+      "completedAt": 1703123458150,
+      "duration": 150,
+      "initiator": {
+        "type": "script",
+        "url": "https://www.googletagmanager.com/gtm.js?id=GTM-XXXXX"
+      },
+      "failed": false,
+      "fromCache": false,
+      "isAnalyticsRequest": true,
+      "isMainFrame": true
+    },
+    {
+      "id": "1703123459000-req004",
+      "url": "https://www.facebook.com/tr/?id=123456789&ev=PageView&dl=https%3A%2F%2Fwww.example.com%2Fproducts%2Fwidget&rl=&if=false&ts=1703123459000",
+      "method": "GET",
+      "resourceType": "image",
+      "requestHeaders": {},
+      "queryParams": {
+        "id": "123456789",
+        "ev": "PageView",
+        "dl": "https://www.example.com/products/widget"
+      },
+      "status": 200,
+      "initiatedAt": 1703123459000,
+      "completedAt": 1703123459200,
+      "duration": 200,
+      "initiator": {
+        "type": "script",
+        "url": "https://connect.facebook.net/en_US/fbevents.js"
+      },
+      "failed": false,
+      "fromCache": false,
+      "isAnalyticsRequest": true,
+      "isMainFrame": true
+    }
+  ],
+  "scripts": [
+    {
+      "id": "1703123456850-script001",
+      "src": "https://www.googletagmanager.com/gtm.js?id=GTM-XXXXX",
+      "isInline": false,
+      "type": "text/javascript",
+      "async": true,
+      "defer": false,
+      "noModule": false,
+      "documentOrder": 0,
+      "inHead": true,
+      "dynamicallyInjected": false,
+      "detectedAt": 1703123456850,
+      "loadedAt": 1703123457350,
+      "loadFailed": false,
+      "dataAttributes": {
+        "gtmId": "GTM-XXXXX"
+      }
+    },
+    {
+      "id": "1703123456860-script002",
+      "isInline": true,
+      "content": "window.dataLayer = window.dataLayer || [];\nwindow.dataLayer.push({\n  'event': 'gtm.js',\n  'gtm.start': new Date().getTime()\n});",
+      "contentTruncated": false,
+      "type": "text/javascript",
+      "async": false,
+      "defer": false,
+      "noModule": false,
+      "documentOrder": 1,
+      "inHead": true,
+      "dynamicallyInjected": false,
+      "detectedAt": 1703123456860,
+      "loadedAt": 1703123456860,
+      "loadFailed": false,
+      "dataAttributes": {}
+    },
+    {
+      "id": "1703123457400-script003",
+      "src": "https://connect.facebook.net/en_US/fbevents.js",
+      "isInline": false,
+      "async": true,
+      "defer": false,
+      "noModule": false,
+      "documentOrder": 2,
+      "inHead": false,
+      "dynamicallyInjected": true,
+      "detectedAt": 1703123457400,
+      "loadedAt": 1703123457800,
+      "loadFailed": false,
+      "dataAttributes": {}
+    }
+  ],
+  "dataLayerEvents": [
+    {
+      "id": "1703123456800-dl001",
+      "dataLayerName": "dataLayer",
+      "data": {
+        "event": "gtm.js",
+        "gtm.start": 1703123456800
+      },
+      "timestamp": 1703123456800,
+      "source": "initial",
+      "index": 0
+    },
+    {
+      "id": "1703123457000-dl002",
+      "dataLayerName": "dataLayer",
+      "data": {
+        "ecommerce": {
+          "items": [
+            {
+              "item_id": "WIDGET-001",
+              "item_name": "Super Widget",
+              "price": 29.99,
+              "quantity": 1
+            }
+          ]
+        }
+      },
+      "timestamp": 1703123457000,
+      "source": "push",
+      "index": 1,
+      "stackTrace": "    at https://www.example.com/products/widget:120:15"
+    },
+    {
+      "id": "1703123457500-dl003",
+      "dataLayerName": "dataLayer",
+      "data": {
+        "event": "view_item",
+        "ecommerce": {
+          "currency": "USD",
+          "value": 29.99,
+          "items": [
+            {
+              "item_id": "WIDGET-001",
+              "item_name": "Super Widget",
+              "price": 29.99
+            }
+          ]
+        }
+      },
+      "timestamp": 1703123457500,
+      "source": "push",
+      "index": 2
+    }
+  ],
+  "dataLayerSnapshots": [
+    {
+      "name": "dataLayer",
+      "contents": [
+        {
+          "event": "gtm.js",
+          "gtm.start": 1703123456800
+        }
+      ],
+      "timestamp": 1703123456800,
+      "phase": "initial"
+    },
+    {
+      "name": "dataLayer",
+      "contents": [
+        {
+          "event": "gtm.js",
+          "gtm.start": 1703123456800
+        },
+        {
+          "ecommerce": {
+            "items": [{"item_id": "WIDGET-001"}]
+          }
+        },
+        {
+          "event": "view_item"
+        }
+      ],
+      "timestamp": 1703123462000,
+      "phase": "final"
+    }
+  ],
+  "consoleMessages": [
+    {
+      "type": "log",
+      "text": "[GTM] Container loaded: GTM-XXXXX",
+      "timestamp": 1703123457400
+    },
+    {
+      "type": "warning",
+      "text": "Third-party cookie will be blocked in future Chrome versions",
+      "url": "https://www.example.com/products/widget",
+      "lineNumber": 1,
+      "timestamp": 1703123457600
+    }
+  ],
+  "errors": [],
+  "cookies": [
+    {
+      "name": "_ga",
+      "value": "GA1.2.1234567890.1703000000",
+      "domain": ".example.com",
+      "path": "/",
+      "expires": 1766195456,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_XXXXXXXXXX",
+      "value": "GS1.1.1703123456.1.1.1703123462.0.0.0",
+      "domain": ".example.com",
+      "path": "/",
+      "expires": 1766195456,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "localStorage": {
+    "userPreferences": "{\"theme\":\"light\",\"currency\":\"USD\"}"
+  },
+  "sessionStorage": {
+    "lastViewedProduct": "WIDGET-001"
+  },
+  "config": {
+    "viewport": {
+      "width": 1920,
+      "height": 1080,
+      "deviceScaleFactor": 1,
+      "isMobile": false,
+      "hasTouch": false
+    },
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "waitUntil": "networkidle",
+    "timeout": 30000,
+    "dataLayerNames": ["dataLayer", "digitalData", "utag_data"],
+    "captureResponseBodies": true,
+    "captureScreenshot": false
+  },
+  "summary": {
+    "totalRequests": 47,
+    "failedRequests": 0,
+    "analyticsRequests": 5,
+    "totalScripts": 12,
+    "externalScripts": 8,
+    "inlineScripts": 4,
+    "dynamicScripts": 3,
+    "dataLayerPushes": 2,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "totalPageWeight": 1245678
+  }
+}

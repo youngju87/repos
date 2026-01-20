@@ -1,0 +1,71 @@
+# GitLab CI/CD Pipeline for Analytics Validation
+#
+# This pipeline runs analytics validation on every merge request.
+
+stages:
+  - validate
+  - report
+
+variables:
+  NODE_ENV: production
+  MAX_ERRORS: "0"
+  MAX_WARNINGS: "10"
+  MIN_SCORE: "80"
+  FAIL_ON_WARNINGS: "false"
+
+# Validate analytics implementation
+validate_analytics:
+  stage: validate
+  image: mcr.microsoft.com/playwright:v1.40.0-jammy
+
+  before_script:
+    - npm ci
+    - npx playwright install --with-deps chromium
+
+  script:
+    - |
+      npx ts-node examples/ci-cd-integration.ts \
+        https://example.com \
+        https://example.com/products
+
+  artifacts:
+    when: always
+    paths:
+      - analytics-report.json
+      - analytics-report.md
+    expire_in: 30 days
+    reports:
+      junit: analytics-report.json
+
+  only:
+    - merge_requests
+    - main
+    - develop
+
+# Post report to merge request
+post_report:
+  stage: report
+  image: alpine:latest
+
+  dependencies:
+    - validate_analytics
+
+  before_script:
+    - apk add --no-cache curl jq
+
+  script:
+    - |
+      # Post markdown report as MR comment
+      if [ -n "$CI_MERGE_REQUEST_IID" ]; then
+        REPORT=$(cat analytics-report.md)
+
+        curl --request POST \
+          --header "PRIVATE-TOKEN: $GITLAB_ACCESS_TOKEN" \
+          --data-urlencode "body=$REPORT" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID/notes"
+      fi
+
+  only:
+    - merge_requests
+
+  when: always

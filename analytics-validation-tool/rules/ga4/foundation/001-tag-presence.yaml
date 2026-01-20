@@ -1,0 +1,37 @@
+# GA4 Foundation Rule: Tag Presence
+# Verifies Google Analytics 4 tracking is installed
+
+id: ga4-foundation-001
+name: GA4 Measurement Tag Must Be Present
+description: |
+  Verifies Google Analytics 4 tracking is installed via gtag.js or GTM.
+  Missing GA4 means zero data collection.
+type: presence
+severity: error
+category: foundation
+platform: ga4
+environments:
+  - production
+  - staging
+
+enabled: true
+
+target:
+  type: tag
+  platform: ga4
+
+shouldExist: true
+minCount: 1
+maxCount: 1
+
+assertions: []
+
+metadata:
+  impact: critical
+  falsePositives: |
+    - Single-page apps may load GA4 dynamically
+    - Some sites intentionally exclude GA4 on certain pages (admin, checkout)
+  remediation: |
+    Add GA4 via Google Tag Manager or gtag.js snippet
+    Verify measurement ID is correct for this environment
+  documentation: https://support.google.com/analytics/answer/9304153
