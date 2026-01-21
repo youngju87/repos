@@ -24,7 +24,7 @@ export class MetaPixelDetector extends BaseDetector {
   readonly platform = 'meta-pixel' as const;
   readonly category = 'advertising' as const;
   readonly version = '1.0.0';
-  readonly priority = 70;
+  override readonly priority = 70;
 
   // Meta Pixel patterns
   private readonly FBEVENTS_SCRIPT_PATTERN = /connect\.facebook\.net.*fbevents\.js/i;
@@ -36,7 +36,7 @@ export class MetaPixelDetector extends BaseDetector {
   /**
    * Quick check for Meta Pixel presence
    */
-  mightBePresent(context: EvidenceContext): boolean {
+  override mightBePresent(context: EvidenceContext): boolean {
     // Check for fbevents.js
     if (context.hasScriptMatching('fbevents.js')) {
       return true;
@@ -187,7 +187,7 @@ export class MetaPixelDetector extends BaseDetector {
   ): DetectionEvidence[] {
     const evidence: DetectionEvidence[] = [];
 
-    for (const { content, script } of context.inlineScripts) {
+    for (const { content, tag } of context.inlineScripts) {
       // Detect fbq('init', 'PIXEL_ID')
       const initMatches = content.matchAll(this.FBQ_INIT_PATTERN);
       for (const match of initMatches) {
@@ -201,7 +201,7 @@ export class MetaPixelDetector extends BaseDetector {
               'fbq init call',
               pixelId,
               CONFIDENCE.HIGH,
-              { scriptId: script.id, pixelId }
+              { scriptId: tag.id, pixelId }
             )
           );
         }
@@ -219,7 +219,7 @@ export class MetaPixelDetector extends BaseDetector {
             'fbq track call',
             eventName,
             CONFIDENCE.MEDIUM,
-            { scriptId: script.id, eventName }
+            { scriptId: tag.id, eventName }
           )
         );
       }
@@ -232,7 +232,7 @@ export class MetaPixelDetector extends BaseDetector {
             'fbq function reference',
             'fbq()',
             CONFIDENCE.MEDIUM_LOW,
-            { scriptId: script.id }
+            { scriptId: tag.id }
           )
         );
       }
@@ -249,7 +249,7 @@ export class MetaPixelDetector extends BaseDetector {
             'Meta Pixel installation snippet',
             'fbevents snippet',
             CONFIDENCE.MEDIUM_HIGH,
-            { scriptId: script.id }
+            { scriptId: tag.id }
           )
         );
       }

@@ -21,7 +21,6 @@ import type {
   NetworkRequest,
   ScriptTag,
   DataLayerEvent,
-  DataLayerSnapshot,
   ConsoleMessage,
   PageError,
 } from '../../types';
@@ -34,7 +33,7 @@ import { DataLayerCollector } from '../collectors/DataLayerCollector';
 import { ConsoleCollector } from '../collectors/ConsoleCollector';
 import { mergeOptions, validateOptions, DEFAULT_SCAN_OPTIONS } from './ScanOptions';
 import { NavigationError, TimeoutError, wrapError } from '../utils/errors';
-import { Timer, delay, withTimeout } from '../utils/timing';
+import { Timer, delay } from '../utils/timing';
 
 /**
  * Page Scanner Class
@@ -63,9 +62,8 @@ export class PageScanner {
     }
 
     // Validate URL
-    let parsedUrl: URL;
     try {
-      parsedUrl = new URL(url);
+      new URL(url);
     } catch {
       return this.createErrorResult(scanId, url, timer, mergedOptions, `Invalid URL: ${url}`);
     }
@@ -276,9 +274,10 @@ export class PageScanner {
 
     // Block resources if specified
     if (options.blockResourceTypes && options.blockResourceTypes.length > 0) {
+      const blockedTypes = options.blockResourceTypes;
       await page.route('**/*', (route) => {
         const resourceType = route.request().resourceType();
-        if (options.blockResourceTypes!.includes(resourceType as typeof options.blockResourceTypes![0])) {
+        if (blockedTypes.includes(resourceType as typeof blockedTypes[number])) {
           route.abort();
         } else {
           route.continue();
@@ -326,7 +325,7 @@ export class PageScanner {
       // Get performance timings from the page
       try {
         const perfTimings = await page.evaluate(() => {
-          const perf = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+          const perf = (performance.getEntriesByType as (type: string) => PerformanceEntry[])('navigation')[0] as PerformanceNavigationTiming;
           if (!perf) return null;
           return {
             domContentLoaded: perf.domContentLoadedEventEnd,
@@ -347,7 +346,7 @@ export class PageScanner {
       // Get paint timings
       try {
         const paintTimings = await page.evaluate(() => {
-          const entries = performance.getEntriesByType('paint');
+          const entries = (performance.getEntriesByType as (type: string) => PerformanceEntry[])('paint');
           const fp = entries.find((e) => e.name === 'first-paint');
           const fcp = entries.find((e) => e.name === 'first-contentful-paint');
           return {

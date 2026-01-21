@@ -4,7 +4,7 @@
  * Defines the configuration options for page scanning with sensible defaults.
  */
 
-import type { ScanOptions, Viewport, Cookie, ProxyConfig, ResourceType } from '../../types';
+import type { ScanOptions, Viewport, ProxyConfig } from '../../types';
 
 /**
  * Default viewport configuration

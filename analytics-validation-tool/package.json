@@ -17,8 +17,10 @@
     "example:detection": "npx ts-node examples/tag-detection.ts",
     "example:validation": "npx ts-node examples/validation.ts",
     "example:ci": "npx ts-node examples/ci-cd-integration.ts",
+    "example:journey": "npx ts-node examples/journey-execution.ts",
     "scan": "npx ts-node examples/basic-scan.ts",
     "validate": "npx ts-node examples/validation.ts",
+    "journey": "npx ts-node examples/journey-execution.ts",
     "install:browsers": "npx playwright install chromium",
     "prepublishOnly": "npm run clean && npm run build"
   },

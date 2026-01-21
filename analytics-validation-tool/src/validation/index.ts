@@ -10,7 +10,6 @@ export * from './types';
 // Context and utilities
 export {
   buildValidationContext,
-  getNestedValue,
   evaluateCondition,
   checkConditions,
 } from './ValidationContext';
@@ -36,12 +35,15 @@ import {
   ConsentHandler,
   DataLayerHandler,
 } from './handlers';
-import type { ValidationEngine } from './ValidationEngine';
+import {
+  ValidationEngine as ValidationEngineClass,
+  createDefaultValidationEngine,
+} from './ValidationEngine';
 
 /**
  * Register all built-in rule handlers
  */
-export function registerBuiltInHandlers(engine: ValidationEngine): void {
+export function registerBuiltInHandlers(engine: ValidationEngineClass): void {
   engine.registerHandler(new PresenceHandler());
   engine.registerHandler(new PayloadHandler());
   engine.registerHandler(new OrderHandler());
@@ -52,7 +54,7 @@ export function registerBuiltInHandlers(engine: ValidationEngine): void {
 /**
  * Create validation engine with all built-in handlers registered
  */
-export function createValidationEngine(environment?: any): ValidationEngine {
+export function createValidationEngine(environment?: any): ValidationEngineClass {
   const engine = createDefaultValidationEngine(environment);
   registerBuiltInHandlers(engine);
   return engine;

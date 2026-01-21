@@ -1,8 +1,8 @@
 /**
  * JY Insights Gold Plus Package - Checkout Pixel (ENHANCED)
  * Enhanced GA4-compliant checkout tracking with comprehensive parameter sets
- * Version: 2.3 (Gold Plus Enhanced)
- * Last Updated: 2026-01-14
+ * Version: 2.4 (GPC Compliance & CPRA Best Practices)
+ * Last Updated: 2026-01-20
  *
  * Installation: Add as Custom Pixel in Shopify Admin > Settings > Customer Events
  * Configuration: Update CONFIG.gtmContainerId with your GTM container ID
@@ -23,12 +23,16 @@
  * - Reads logged_in status from storefront via sessionStorage
  * - Reads consent state from sessionStorage (set by shopify-privacy-consent-mode-v2.0-modern-api.liquid)
  *
- * CONSENT MODE:
+ * CONSENT MODE & GPC COMPLIANCE (v2.4):
  * - Checkout iframe cannot access Shopify's customerPrivacy API (sandboxed)
  * - Consent state is passed via sessionStorage key: 'jy_consent_state'
  * - Storefront consent script saves consent to sessionStorage on every change
  * - Checkout pixel reads and applies consent BEFORE GTM loads
- * - Fires 'consent_state_loaded' event with current consent values
+ * - GPC (Global Privacy Control) honored as immutable override
+ * - ad_user_data and ad_personalization follow sale_of_data (CPRA compliant)
+ * - GPC blocks sale/sharing only - analytics still allowed
+ * - GPC checked on every consent update (persistent override)
+ * - Fires 'consent_state_loaded' event with current consent values + GPC state
  *
  * ENHANCEMENTS vs v1.7:
  * - Comprehensive user parameters (full PII for thank you page)
@@ -59,7 +63,7 @@
 
   var CONFIG = {
     debug: true,
-    version: '2.3-enhanced',
+    version: '2.4-enhanced',
     googleFeedRegion: 'US',
     gtmContainerId: 'GTM-K9JX87Z6' // Replace with your GTM container ID
   };
@@ -627,12 +631,18 @@
   window.dataLayer = window.dataLayer || [];
 
   // ==========================================================================
-  // CONSENT MODE - Using Shopify's Checkout Customer Privacy API
+  // CONSENT MODE - Shopify API + GPC Compliance (v2.4)
   // ==========================================================================
   // Shopify provides a checkout-specific consent API that works in the sandbox:
   // - init.customerPrivacy: Initial consent state
   // - api.customerPrivacy.subscribe(): Listen for consent changes during checkout
-  // This is more reliable than sessionStorage for mid-checkout consent updates.
+  // - sessionStorage fallback: If Shopify API unavailable
+  //
+  // GPC COMPLIANCE (NEW in v2.4):
+  // - Reads GPC status from sessionStorage (set by storefront consent script)
+  // - ad_user_data and ad_personalization follow saleOfDataAllowed (NOT marketingAllowed)
+  // - GPC overrides saleOfDataAllowed on every consent update
+  // - Aligns with storefront consent mapping for CPRA compliance
 
   function gtag(){window.dataLayer.push(arguments);}
 
@@ -651,20 +661,47 @@
   var currentCustomerPrivacy = null;
 
   /**
+   * Check for Global Privacy Control signal
+   *
+   * GPC is read from sessionStorage (set by storefront consent script)
+   * Per CPRA: GPC is a legally binding "Do Not Sell or Share" signal
+   * It does NOT block analytics - only sale/sharing of data
+   */
+  function checkGPC() {
+    try {
+      var consentJson = sessionStorage.getItem('jy_consent_state');
+      if (consentJson) {
+        var storedConsent = JSON.parse(consentJson);
+        return storedConsent.gpc_active === true;
+      }
+    } catch (e) {
+      log('Error reading GPC status from sessionStorage', e);
+    }
+    return false;
+  }
+
+  /**
    * Map Shopify's customerPrivacy format to Google Consent Mode format
    * Shopify format: { analyticsProcessingAllowed, marketingAllowed, preferencesProcessingAllowed, saleOfDataAllowed }
    * Google format: { analytics_storage, ad_storage, ad_user_data, ad_personalization, ... }
+   *
+   * IMPORTANT: ad_user_data and ad_personalization follow saleOfDataAllowed (NOT marketingAllowed)
+   * This aligns with CPRA requirements - these parameters control cross-context data sharing
    */
-  function mapToGoogleConsent(customerPrivacy) {
+  function mapToGoogleConsent(customerPrivacy, gpcActive) {
     if (!customerPrivacy) {
       return defaultConsentState;
     }
 
+    // GPC overrides saleOfDataAllowed (legally required under CPRA)
+    // User can still grant marketing, but sale/sharing is blocked
+    var effectiveSaleOfData = gpcActive ? false : customerPrivacy.saleOfDataAllowed;
+
     return {
       'analytics_storage': customerPrivacy.analyticsProcessingAllowed ? 'granted' : 'denied',
       'ad_storage': customerPrivacy.marketingAllowed ? 'granted' : 'denied',
-      'ad_user_data': customerPrivacy.marketingAllowed ? 'granted' : 'denied',
-      'ad_personalization': customerPrivacy.marketingAllowed ? 'granted' : 'denied',
+      'ad_user_data': effectiveSaleOfData ? 'granted' : 'denied',      // Follows sale_of_data (CPRA compliant)
+      'ad_personalization': effectiveSaleOfData ? 'granted' : 'denied', // Follows sale_of_data (CPRA compliant)
       'personalization_storage': customerPrivacy.preferencesProcessingAllowed ? 'granted' : 'denied',
       'functionality_storage': 'granted',
       'security_storage': 'granted'
@@ -675,7 +712,12 @@
    * Handle consent updates (both initial and mid-checkout changes)
    */
   function updateConsentMode(customerPrivacy, source) {
-    var consentState = mapToGoogleConsent(customerPrivacy);
+    // Check GPC on EVERY consent update (immutable override)
+    var gpcActive = checkGPC();
+    var consentState = mapToGoogleConsent(customerPrivacy, gpcActive);
+
+    // Calculate effective sale_of_data after GPC override
+    var effectiveSaleOfData = gpcActive ? false : (customerPrivacy ? customerPrivacy.saleOfDataAllowed : false);
 
     // Update Google Consent Mode
     gtag('consent', 'update', consentState);
@@ -688,12 +730,19 @@
       analytics_consent: customerPrivacy ? customerPrivacy.analyticsProcessingAllowed : false,
       marketing_consent: customerPrivacy ? customerPrivacy.marketingAllowed : false,
       preferences_consent: customerPrivacy ? customerPrivacy.preferencesProcessingAllowed : false,
-      sale_of_data_consent: customerPrivacy ? customerPrivacy.saleOfDataAllowed : false
+      sale_of_data_consent: effectiveSaleOfData,
+      sale_of_data_banner: customerPrivacy ? customerPrivacy.saleOfDataAllowed : false, // What Shopify API says
+      sale_of_data_effective: effectiveSaleOfData, // After GPC override
+      gpc_detected: gpcActive,
+      gpc_active: gpcActive,
+      gpc_override_applied: gpcActive && customerPrivacy && customerPrivacy.saleOfDataAllowed // GPC blocked granted consent
     });
 
     log('Consent updated in checkout', {
       analytics: consentState.analytics_storage,
       ads: consentState.ad_storage,
+      ad_user_data: consentState.ad_user_data,
+      gpc_active: gpcActive,
       source: source
     });
 
@@ -725,20 +774,30 @@
     }
   }
 
-  // Set initial consent state
-  var initialConsentState = mapToGoogleConsent(initialCustomerPrivacy);
+  // Set initial consent state with GPC check
+  var gpcActiveOnLoad = checkGPC();
+  var initialConsentState = mapToGoogleConsent(initialCustomerPrivacy, gpcActiveOnLoad);
   currentCustomerPrivacy = initialCustomerPrivacy;
 
   // Set consent BEFORE GTM loads (critical for proper consent handling)
   gtag('consent', 'default', initialConsentState);
 
-  // Push initial consent event to dataLayer
+  // Push initial consent event to dataLayer with full GPC tracking
+  var effectiveSaleOfDataInitial = gpcActiveOnLoad ? false : (initialCustomerPrivacy ? initialCustomerPrivacy.saleOfDataAllowed : false);
+
   window.dataLayer.push({
     event: 'consent_state_loaded',
     consent_state: initialConsentState,
     consent_source: initialCustomerPrivacy ? 'shopify_checkout' : 'default',
     analytics_consent: initialCustomerPrivacy ? initialCustomerPrivacy.analyticsProcessingAllowed : false,
-    marketing_consent: initialCustomerPrivacy ? initialCustomerPrivacy.marketingAllowed : false
+    marketing_consent: initialCustomerPrivacy ? initialCustomerPrivacy.marketingAllowed : false,
+    preferences_consent: initialCustomerPrivacy ? initialCustomerPrivacy.preferencesProcessingAllowed : false,
+    sale_of_data_consent: effectiveSaleOfDataInitial,
+    sale_of_data_banner: initialCustomerPrivacy ? initialCustomerPrivacy.saleOfDataAllowed : false,
+    sale_of_data_effective: effectiveSaleOfDataInitial,
+    gpc_detected: gpcActiveOnLoad,
+    gpc_active: gpcActiveOnLoad,
+    gpc_override_applied: gpcActiveOnLoad && initialCustomerPrivacy && initialCustomerPrivacy.saleOfDataAllowed
   });
 
   log('Consent mode initialized in checkout pixel', {

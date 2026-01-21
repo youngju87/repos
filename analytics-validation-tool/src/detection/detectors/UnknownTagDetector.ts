@@ -28,7 +28,7 @@ export class UnknownTagDetector extends BaseDetector {
   readonly platform = 'unknown' as const;
   readonly category = 'custom' as const;
   readonly version = '1.0.0';
-  readonly priority = 1; // Lowest priority - run last
+  override readonly priority = 1; // Lowest priority - run last
 
   // Heuristic patterns for detecting unknown analytics tags
   private readonly TRACKING_DOMAINS = [
@@ -93,7 +93,7 @@ export class UnknownTagDetector extends BaseDetector {
    * Quick check - always return true for unknown detector
    * This runs last, so we always check for unknown tags
    */
-  mightBePresent(context: EvidenceContext): boolean {
+  override mightBePresent(_context: EvidenceContext): boolean {
     return true;
   }
 

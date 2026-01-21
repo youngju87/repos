@@ -4,9 +4,7 @@
  * Type definitions for multi-step user flow simulation and validation.
  */
 
-import type { PageScanResult } from '../types';
-import type { TagDetectionResult } from '../detection/types';
-import type { ValidationReport } from '../validation/types';
+// Types used for journey result correlation
 import type { PageReport } from '../reporting/types';
 
 // =============================================================================
@@ -101,6 +99,14 @@ export interface TypeAction extends JourneyActionBase {
 
   /** Typing delay (ms per character) */
   delay?: number;
+
+  /** Wait for selector before typing */
+  waitForSelector?: boolean;
+
+  /** Typing options */
+  options?: {
+    delay?: number;
+  };
 }
 
 /**
@@ -114,6 +120,15 @@ export interface SubmitAction extends JourneyActionBase {
 
   /** Wait for navigation after submit */
   waitForNavigation?: boolean;
+
+  /** Wait for selector before submit */
+  waitForSelector?: boolean;
+
+  /** Submit method */
+  method?: 'submit' | 'click';
+
+  /** Wait until navigation completes */
+  waitUntil?: 'load' | 'domcontentloaded' | 'networkidle';
 }
 
 /**
@@ -142,13 +157,38 @@ export interface WaitAction extends JourneyActionBase {
 }
 
 /**
- * Assert action - Run validation rule
+ * Assert type
+ */
+export type AssertType = 'url' | 'text' | 'exists' | 'visible' | 'count' | 'dataLayer' | 'cookie';
+
+/**
+ * Assert operator
+ */
+export type AssertOperator = 'equals' | 'contains' | 'matches' | 'gt' | 'lt' | 'gte' | 'lte' | 'greaterThan' | 'lessThan';
+
+/**
+ * Assert action - Run validation assertion
  */
 export interface AssertAction extends JourneyActionBase {
   type: 'assert';
 
-  /** Rule ID to validate */
-  ruleId: string;
+  /** Assert type */
+  assertType: AssertType;
+
+  /** CSS selector (for element assertions) */
+  selector?: string;
+
+  /** Expected value */
+  expected?: string | number | boolean;
+
+  /** Comparison operator */
+  operator?: AssertOperator;
+
+  /** Custom message on failure */
+  message?: string;
+
+  /** Rule ID to validate (legacy) */
+  ruleId?: string;
 
   /** Expected result (default: passed) */
   expectedStatus?: 'passed' | 'failed';
@@ -165,6 +205,12 @@ export interface ScreenshotAction extends JourneyActionBase {
 
   /** Screenshot options */
   fullPage?: boolean;
+
+  /** CSS selector for element screenshot */
+  selector?: string;
+
+  /** Image format */
+  format?: 'png' | 'jpeg';
 }
 
 /**
@@ -187,6 +233,9 @@ export type JourneyAction =
  * Journey step definition
  */
 export interface JourneyStep {
+  /** Step ID */
+  id?: string;
+
   /** Step name */
   name: string;
 
@@ -278,6 +327,9 @@ export interface ActionResult {
  * Step execution result
  */
 export interface StepResult {
+  /** Step ID */
+  stepId?: string;
+
   /** Step name */
   name: string;
 
@@ -288,7 +340,7 @@ export interface StepResult {
   stepIndex: number;
 
   /** Step status */
-  status: 'success' | 'failed' | 'skipped';
+  status: 'success' | 'failed' | 'skipped' | 'partial';
 
   /** Started at timestamp */
   startedAt: number;
@@ -302,8 +354,14 @@ export interface StepResult {
   /** Action results */
   actionResults: ActionResult[];
 
+  /** Individual actions list */
+  actions?: ActionResult[];
+
   /** Page report (if analytics captured) */
   pageReport?: PageReport;
+
+  /** Validation report (if validation run) */
+  validation?: any;
 
   /** Current URL after step */
   currentUrl: string;
@@ -362,6 +420,9 @@ export interface JourneyResult {
 
     /** Actions failed */
     actionsFailed: number;
+
+    /** Actions completed (alias for actionsSucceeded) */
+    actionsCompleted?: number;
 
     /** Overall validation score (if validation run) */
     overallScore?: number;
@@ -440,6 +501,18 @@ export interface JourneyEngineConfig {
 
   /** Debug logging */
   debug?: boolean;
+
+  /** Run browser in headless mode */
+  headless?: boolean;
+
+  /** Browser viewport configuration */
+  viewport?: {
+    width: number;
+    height: number;
+  };
+
+  /** Custom user agent */
+  userAgent?: string;
 }
 
 /**
@@ -460,4 +533,36 @@ export interface JourneyExecutionOptions {
 
   /** Additional context to pass to actions */
   context?: Record<string, unknown>;
+}
+
+/**
+ * Journey loader config (alias for JourneyLoaderOptions)
+ */
+export type JourneyLoaderConfig = JourneyLoaderOptions;
+
+// =============================================================================
+// ACTION HANDLERS
+// =============================================================================
+
+import type { Page } from 'playwright';
+
+/**
+ * Action handler interface
+ */
+export interface ActionHandler<T extends JourneyAction = JourneyAction> {
+  /** Action type this handler handles */
+  readonly type: JourneyActionType;
+
+  /** Check if this handler can handle the action */
+  canHandle(action: JourneyAction): boolean;
+
+  /** Execute the action */
+  execute(
+    action: T,
+    page: Page,
+    context: Record<string, unknown>
+  ): Promise<ActionResult>;
+
+  /** Validate action definition */
+  validate?(action: T): string[];
 }

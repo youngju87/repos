@@ -7,6 +7,20 @@
  * - Network, script, data layer, and console collection
  */
 
+// Types from ../types
+export type {
+  PageScanResult,
+  ScanOptions,
+  NetworkRequest,
+  ScriptTag,
+  DataLayerEvent,
+  ConsoleMessage,
+  PageError,
+  Cookie,
+  ScanSummary,
+  PageTimings,
+} from '../types';
+
 // Browser management
 export {
   BrowserManager,
@@ -46,6 +60,7 @@ export {
   ScriptCollector,
   DataLayerCollector,
   ConsoleCollector,
+  BaseCollector,
 } from './collectors';
 export type {
   Collector,
@@ -55,6 +70,8 @@ export type {
   DataLayerCollectorOptions,
   ConsoleCollectorOptions,
   ConsoleData,
+  BaseCollectorOptions,
+  CollectorState,
 } from './collectors';
 
 // Utilities
@@ -73,6 +90,30 @@ export {
   parseQueryString,
   parseUrl,
   matchUrlPattern,
+  // Logging
+  getLogger,
+  setGlobalLogger,
+  ConsoleLogger,
+  NullLogger,
+  // Validation
+  validateUrl,
+  validatePositiveNumber,
+  validateArray,
+  validateString,
+  ValidationError,
+  // Retry
+  withRetry,
+  retryOnErrors,
+  retryWithTimeout,
+  Retry,
+  DEFAULT_RETRY_OPTIONS,
+} from './utils';
+
+export type {
+  Logger,
+  LogLevel,
+  LogContext,
+  RetryOptions,
 } from './utils';
 
 // Injection scripts (for advanced use cases)

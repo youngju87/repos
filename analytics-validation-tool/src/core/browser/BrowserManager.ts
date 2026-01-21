@@ -13,7 +13,6 @@ import { chromium, firefox, webkit, Browser, BrowserContext } from 'playwright';
 import type {
   BrowserType,
   BrowserPoolConfig,
-  BrowserLaunchConfig,
   ContextOptions,
   ManagedBrowser,
   ManagedContext,
@@ -83,7 +82,7 @@ export class BrowserManager {
     }
 
     // Launch minimum number of browsers
-    const launchPromises: Promise<void>[] = [];
+    const launchPromises: Promise<ManagedBrowser>[] = [];
     for (let i = 0; i < this.config.minBrowsers; i++) {
       launchPromises.push(this.launchBrowser());
     }
@@ -250,14 +249,14 @@ export class BrowserManager {
     managedBrowser: ManagedBrowser,
     options: ContextOptions
   ): Promise<ContextLease> {
-    const contextOptions: Parameters<Browser['newContext']>[0] = {
+    const contextOptions = {
       viewport: options.viewport ?? { width: 1920, height: 1080 },
       userAgent: options.userAgent,
       extraHTTPHeaders: options.extraHTTPHeaders,
       geolocation: options.geolocation,
       locale: options.locale,
       timezoneId: options.timezoneId,
-      permissions: options.permissions as Parameters<Browser['newContext']>[0]['permissions'],
+      permissions: options.permissions,
       bypassCSP: options.bypassCSP,
       javaScriptEnabled: options.javaScriptEnabled ?? true,
       httpCredentials: options.httpCredentials,

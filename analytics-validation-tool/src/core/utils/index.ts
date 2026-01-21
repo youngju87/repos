@@ -39,3 +39,39 @@ export {
   deepMerge,
   getNestedProperty,
 } from './serialization';
+
+export {
+  Logger,
+  LogLevel,
+  LogContext,
+  LogEntry,
+  ConsoleLogger,
+  NullLogger,
+  setGlobalLogger,
+  getLogger,
+  createLogger,
+} from './logger';
+
+export {
+  ValidationError,
+  validateUrl,
+  validatePositiveNumber,
+  validateArray,
+  validateObject,
+  validateEnum,
+  validateString,
+  validateBoolean,
+  validateOptional,
+  validateDataLayerName,
+  validateRegexPattern,
+} from './validation';
+
+export {
+  withRetry,
+  retryOnErrors,
+  retryWithTimeout,
+  Retry,
+  DEFAULT_RETRY_OPTIONS,
+} from './retry';
+
+export type { RetryOptions } from './retry';

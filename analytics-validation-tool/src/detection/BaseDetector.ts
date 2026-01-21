@@ -18,7 +18,7 @@ import type {
 } from './types';
 import type { NetworkRequest, ScriptTag } from '../types';
 import { generateId } from '../types';
-import { extractQueryParams, parsePayload, getNestedValue } from './EvidenceExtractor';
+import { extractQueryParams } from './EvidenceExtractor';
 
 /**
  * Base Detector Class

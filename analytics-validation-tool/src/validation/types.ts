@@ -4,7 +4,7 @@
  * Core type definitions for the validation rule engine.
  */
 
-import type { PageScanResult, NetworkRequest, DataLayerEvent, ScriptTag } from '../types';
+import type { PageScanResult, NetworkRequest, DataLayerEvent } from '../types';
 import type { TagDetectionResult, TagInstance } from '../detection/types';
 
 // =============================================================================

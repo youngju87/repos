@@ -16,7 +16,6 @@ import type {
   DetectionEvidence,
   TagConfiguration,
 } from '../types';
-import { extractQueryParams } from '../EvidenceExtractor';
 
 export class AdobeAnalyticsDetector extends BaseDetector {
   readonly id = 'adobe-analytics';
@@ -24,7 +23,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
   readonly platform = 'adobe-analytics' as const;
   readonly category = 'analytics' as const;
   readonly version = '1.0.0';
-  readonly priority = 80;
+  override readonly priority = 80;
 
   // Adobe Analytics patterns
   private readonly TRACKING_CALL_PATTERN = /\/b\/ss\/([^/]+)\/[0-9]+\//i;
@@ -36,7 +35,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
   /**
    * Quick check for Adobe Analytics presence
    */
-  mightBePresent(context: EvidenceContext): boolean {
+  override mightBePresent(context: EvidenceContext): boolean {
     // Check for AppMeasurement script
     if (
       context.hasScriptMatching('appmeasurement') ||
@@ -296,7 +295,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
   ): DetectionEvidence[] {
     const evidence: DetectionEvidence[] = [];
 
-    for (const { content, script } of context.inlineScripts) {
+    for (const { content, tag } of context.inlineScripts) {
       // Look for s.account (report suite configuration)
       const accountMatch = content.match(/s\.account\s*=\s*['"]([^'"]+)['"]/);
       if (accountMatch) {
@@ -311,7 +310,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
             's.account configuration',
             accountMatch[1],
             CONFIDENCE.HIGH,
-            { scriptId: script.id, reportSuiteIds: rsids }
+            { scriptId: tag.id, reportSuiteIds: rsids }
           )
         );
       }
@@ -324,7 +323,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
             's.t() tracking call',
             's.t()',
             CONFIDENCE.MEDIUM,
-            { scriptId: script.id }
+            { scriptId: tag.id }
           )
         );
       }
@@ -336,7 +335,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
             's.tl() link tracking call',
             's.tl()',
             CONFIDENCE.MEDIUM,
-            { scriptId: script.id }
+            { scriptId: tag.id }
           )
         );
       }
@@ -352,7 +351,7 @@ export class AdobeAnalyticsDetector extends BaseDetector {
             's.trackingServer configuration',
             serverMatch[1],
             CONFIDENCE.MEDIUM_HIGH,
-            { scriptId: script.id, trackingServer: serverMatch[1] }
+            { scriptId: tag.id, trackingServer: serverMatch[1] }
           )
         );
       }

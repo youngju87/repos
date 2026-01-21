@@ -4,7 +4,7 @@
  * Validates data layer structure, schema, naming conventions, and content.
  */
 
-import { getNestedValue, checkConditions } from '../ValidationContext';
+import { getNestedValue } from '../ValidationContext';
 import type {
   DataLayerRuleDef,
   ValidationContext,

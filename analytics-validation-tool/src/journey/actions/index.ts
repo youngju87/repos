@@ -65,7 +65,7 @@ export class ActionHandlerRegistry {
 /**
  * Register all built-in action handlers
  */
-export function registerBuiltInHandlers(registry: ActionHandlerRegistry): void {
+export function registerBuiltInActionHandlers(registry: ActionHandlerRegistry): void {
   registry.register(new NavigateActionHandler());
   registry.register(new ClickActionHandler());
   registry.register(new TypeActionHandler());
@@ -80,6 +80,6 @@ export function registerBuiltInHandlers(registry: ActionHandlerRegistry): void {
  */
 export function getDefaultActionRegistry(): ActionHandlerRegistry {
   const registry = new ActionHandlerRegistry();
-  registerBuiltInHandlers(registry);
+  registerBuiltInActionHandlers(registry);
   return registry;
 }

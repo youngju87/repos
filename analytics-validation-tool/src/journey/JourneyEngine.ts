@@ -14,13 +14,13 @@ import type {
   JourneyEngineConfig,
   JourneyAction,
 } from './types';
-import type { PageScanResult } from '../core/types';
+import type { PageScanResult } from '../types';
 import type { TagDetectionResult } from '../detection/types';
 import type { ValidationReport, AnyRuleDef } from '../validation/types';
 import { ActionHandlerRegistry } from './actions';
-import { PageScanner } from '../core/PageScanner';
+import { PageScanner } from '../core/scanner/PageScanner';
 import { detectTags } from '../detection/DetectionEngine';
-import { createValidationEngine } from '../validation/ValidationEngine';
+import { createValidationEngine } from '../validation';
 
 /**
  * Journey execution engine
@@ -91,9 +91,14 @@ export class JourneyEngine {
           // Step execution failed
           stepResults.push({
             stepId: step.id,
-            stepName: step.name,
+            name: step.name,
+            stepIndex: i,
             status: 'failed',
             actions: [],
+            actionResults: [],
+            startedAt: startTime,
+            completedAt: Date.now(),
+            currentUrl: this.page?.url() || '',
             error: error instanceof Error ? error.message : String(error),
             duration: Date.now() - startTime,
           });
@@ -125,23 +130,34 @@ export class JourneyEngine {
 
       const duration = Date.now() - startTime;
 
+      const actionsCompleted = stepResults.reduce(
+        (sum, s) => sum + (s.actions?.filter((a) => a.status === 'success').length || 0),
+        0
+      );
+      const actionsFailed = stepResults.reduce(
+        (sum, s) => sum + (s.actions?.filter((a) => a.status === 'failed').length || 0),
+        0
+      );
+
       return {
         id: journey.id,
         name: journey.name,
         status,
+        startedAt: startTime,
+        completedAt: Date.now(),
         steps: stepResults,
         summary: {
           totalSteps: journey.steps.length,
           stepsCompleted,
+          stepsFailed: stepResults.filter((s) => s.status === 'failed').length,
+          stepsSkipped: stepResults.filter((s) => s.status === 'skipped').length,
           totalActions,
-          actionsCompleted: stepResults.reduce(
-            (sum, s) => sum + s.actions.filter((a) => a.status === 'success').length,
-            0
-          ),
+          actionsSucceeded: actionsCompleted,
+          actionsFailed,
+          actionsCompleted,
           overallScore,
         },
         duration,
-        timestamp: startTime,
       };
     } finally {
       // Cleanup
@@ -202,7 +218,6 @@ export class JourneyEngine {
       try {
         const scanner = new PageScanner();
         scan = await scanner.scan(this.page.url(), {
-          page: this.page,
           timeout: 30000,
         });
 
@@ -238,11 +253,14 @@ export class JourneyEngine {
 
     return {
       stepId: step.id,
-      stepName: step.name,
+      name: step.name,
+      stepIndex,
       status,
+      startedAt: startTime,
+      completedAt: Date.now(),
       actions: actionResults,
-      scan,
-      detection,
+      actionResults,
+      currentUrl: this.page?.url() || '',
       validation,
       duration,
     };

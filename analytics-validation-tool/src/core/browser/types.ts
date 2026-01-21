@@ -2,7 +2,7 @@
  * Browser-related type definitions
  */
 
-import type { Browser, BrowserContext, Page } from 'playwright';
+import type { Browser, BrowserContext } from 'playwright';
 
 /**
  * Supported browser types
@@ -85,7 +85,8 @@ export interface BrowserLaunchConfig {
     server: string;
     username?: string;
     password?: string;
-    bypass?: string[];
+    /** Comma-separated list of hosts to bypass proxy */
+    bypass?: string;
   };
 
   /** Slow down operations by specified ms (for debugging) */

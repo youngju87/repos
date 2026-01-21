@@ -6,7 +6,7 @@
 
 import type { PageScanResult } from '../types';
 import type { TagDetectionResult } from '../detection/types';
-import type { ValidationReport, ValidationResult } from '../validation/types';
+import type { ValidationReport } from '../validation/types';
 
 // =============================================================================
 // SEVERITY & STATUS

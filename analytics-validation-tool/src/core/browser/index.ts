@@ -13,3 +13,8 @@ export type {
   BrowserPoolStats,
   ContextLease,
 } from './types';
+export {
+  validateBrowserPoolConfig,
+  validateBrowserLaunchConfig,
+  DEFAULT_POOL_CONFIG,
+} from './validation';

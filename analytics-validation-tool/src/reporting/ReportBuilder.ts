@@ -130,9 +130,11 @@ export class ReportBuilder {
     // Calculate summary
     const issueSummary = this.calculateIssueSummary(issues);
 
+    const scanDuration = scan.duration ?? (scan.completedAt - scan.startedAt);
+
     return {
       url: scan.url,
-      timestamp: scan.timestamp,
+      timestamp: scan.timestamp ?? scan.startedAt,
       scanId: scan.id,
       detectionId: detection?.id,
       validationId: validation?.id,
@@ -150,11 +152,11 @@ export class ReportBuilder {
         issues: issueSummary,
       },
       performance: {
-        scanDuration: scan.duration,
+        scanDuration,
         detectionDuration: detection?.duration,
         validationDuration: validation?.duration,
         totalDuration:
-          scan.duration + (detection?.duration || 0) + (validation?.duration || 0),
+          scanDuration + (detection?.duration || 0) + (validation?.duration || 0),
       },
     };
   }

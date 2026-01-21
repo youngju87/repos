@@ -10,12 +10,8 @@
 import {
   PageScanner,
   BrowserManager,
-  shutdownDefaultBrowserManager,
   createDesktopOptions,
-  createMobileOptions,
   type PageScanResult,
-  type NetworkRequest,
-  type ScriptTag,
 } from '../src';
 
 /**

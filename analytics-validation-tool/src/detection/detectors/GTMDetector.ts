@@ -22,7 +22,7 @@ export class GTMDetector extends BaseDetector {
   readonly platform = 'gtm' as const;
   readonly category = 'tag-manager' as const;
   readonly version = '1.0.0';
-  readonly priority = 100; // Highest priority - TMS should be detected first
+  override readonly priority = 100; // Highest priority - TMS should be detected first
 
   // GTM specific patterns
   private readonly CONTAINER_ID_PATTERN = /^GTM-[A-Z0-9]{6,8}$/;
@@ -32,7 +32,7 @@ export class GTMDetector extends BaseDetector {
   /**
    * Quick check for GTM presence
    */
-  mightBePresent(context: EvidenceContext): boolean {
+  override mightBePresent(context: EvidenceContext): boolean {
     // Check for gtm.js script
     if (context.hasScriptMatching('googletagmanager.com/gtm.js')) {
       return true;
@@ -197,7 +197,7 @@ export class GTMDetector extends BaseDetector {
       /['"]GTM-[A-Z0-9]{6,8}['"]/,
     ];
 
-    for (const { content, script } of context.inlineScripts) {
+    for (const { content, tag } of context.inlineScripts) {
       // Check for GTM snippet structure
       let hasSnippet = false;
       for (const pattern of snippetPatterns) {
@@ -220,7 +220,7 @@ export class GTMDetector extends BaseDetector {
               'GTM installation snippet',
               containerId,
               CONFIDENCE.HIGH,
-              { scriptId: script.id }
+              { scriptId: tag.id }
             )
           );
         } else {
@@ -230,7 +230,7 @@ export class GTMDetector extends BaseDetector {
               'GTM snippet structure',
               'GTM snippet detected',
               CONFIDENCE.MEDIUM,
-              { scriptId: script.id }
+              { scriptId: tag.id }
             )
           );
         }

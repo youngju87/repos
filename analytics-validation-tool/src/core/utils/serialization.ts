@@ -28,13 +28,16 @@ export function safeStringify(
 ): string {
   const {
     maxStringLength = MAX_STRING_LENGTH,
-    maxDepth = MAX_DEPTH,
+    maxDepth: _maxDepth = MAX_DEPTH,
     indent,
   } = options;
 
+  // _maxDepth is available for future depth-limiting implementation
+  void _maxDepth;
+
   const seen = new WeakSet();
 
-  function replacer(this: unknown, key: string, val: unknown): unknown {
+  function replacer(this: unknown, _key: string, val: unknown): unknown {
     // Handle circular references
     if (typeof val === 'object' && val !== null) {
       if (seen.has(val)) {

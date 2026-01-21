@@ -161,8 +161,8 @@ export class NetworkCollector implements Collector<NetworkRequest[]> {
         postData?: string;
       };
       timestamp: number;
-      type: string;
-      initiator: {
+      type?: string;
+      initiator?: {
         type: string;
         url?: string;
         lineNumber?: number;
@@ -170,7 +170,7 @@ export class NetworkCollector implements Collector<NetworkRequest[]> {
         stack?: { callFrames: Array<{ url: string; lineNumber: number; columnNumber: number }> };
       };
       redirectResponse?: unknown;
-      frameId: string;
+      frameId?: string;
     }) => {
       const request = this.createRequestFromCDP(params);
       this.requests.set(params.requestId, request);
@@ -193,8 +193,8 @@ export class NetworkCollector implements Collector<NetworkRequest[]> {
         fromServiceWorker?: boolean;
       };
       timestamp: number;
-      type: string;
-      frameId: string;
+      type?: string;
+      frameId?: string;
     }) => {
       const request = this.requests.get(params.requestId);
       if (request) {
@@ -303,7 +303,7 @@ export class NetworkCollector implements Collector<NetworkRequest[]> {
       const url = request.url();
 
       // Find matching request by URL
-      for (const [id, req] of this.requests) {
+      for (const [_id, req] of this.requests) {
         if (req.url === url && !req.isMainFrame) {
           req.isMainFrame = request.isNavigationRequest();
           break;
@@ -311,8 +311,8 @@ export class NetworkCollector implements Collector<NetworkRequest[]> {
       }
     };
 
-    const onResponse = (response: Response) => {
-      // Additional response handling if needed
+    const onResponse = (_response: Response) => {
+      // Placeholder for additional response handling if needed
     };
 
     this.page.on('request', onRequest);
@@ -336,36 +336,38 @@ export class NetworkCollector implements Collector<NetworkRequest[]> {
       postData?: string;
     };
     timestamp: number;
-    type: string;
-    initiator: {
+    type?: string;
+    initiator?: {
       type: string;
       url?: string;
       lineNumber?: number;
       columnNumber?: number;
       stack?: { callFrames: Array<{ url: string; lineNumber: number; columnNumber: number }> };
     };
-    frameId: string;
+    frameId?: string;
   }): Partial<NetworkRequest> {
     const url = params.request.url;
     const parsedUrl = this.parseUrl(url);
 
-    const initiator: RequestInitiator = {
-      type: this.mapInitiatorType(params.initiator.type),
-      url: params.initiator.url,
-      lineNumber: params.initiator.lineNumber,
-      columnNumber: params.initiator.columnNumber,
-      stack: params.initiator.stack
-        ? params.initiator.stack.callFrames
-            .map((f) => `    at ${f.url}:${f.lineNumber}:${f.columnNumber}`)
-            .join('\n')
-        : undefined,
-    };
+    const initiator: RequestInitiator | undefined = params.initiator
+      ? {
+          type: this.mapInitiatorType(params.initiator.type),
+          url: params.initiator.url,
+          lineNumber: params.initiator.lineNumber,
+          columnNumber: params.initiator.columnNumber,
+          stack: params.initiator.stack
+            ? params.initiator.stack.callFrames
+                .map((f) => `    at ${f.url}:${f.lineNumber}:${f.columnNumber}`)
+                .join('\n')
+            : undefined,
+        }
+      : undefined;
 
     const request: Partial<NetworkRequest> = {
       id: generateId(),
       url,
       method: params.request.method as HttpMethod,
-      resourceType: this.mapResourceType(params.type),
+      resourceType: this.mapResourceType(params.type || 'Other'),
       requestHeaders: this.normalizeHeaders(params.request.headers),
       queryParams: parsedUrl?.search ? parseQueryString(parsedUrl.search) : undefined,
       initiatedAt: Date.now(),

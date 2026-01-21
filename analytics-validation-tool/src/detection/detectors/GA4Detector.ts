@@ -9,14 +9,14 @@
  * - dataLayer interactions
  */
 
-import { BaseDetector, CONFIDENCE, COMMON_PATTERNS } from '../BaseDetector';
+import { BaseDetector, CONFIDENCE } from '../BaseDetector';
 import type {
   TagInstance,
   EvidenceContext,
   DetectionEvidence,
   TagConfiguration,
 } from '../types';
-import type { NetworkRequest } from '../../types';
+// NetworkRequest type is used indirectly via context.networkRequests
 import { extractQueryParams } from '../EvidenceExtractor';
 
 export class GA4Detector extends BaseDetector {
@@ -25,7 +25,7 @@ export class GA4Detector extends BaseDetector {
   readonly platform = 'ga4' as const;
   readonly category = 'analytics' as const;
   readonly version = '1.0.0';
-  readonly priority = 80; // High priority - common tag
+  override readonly priority = 80; // High priority - common tag
 
   // GA4 specific patterns
   private readonly MEASUREMENT_ID_PATTERN = /^G-[A-Z0-9]{6,10}$/;
@@ -36,7 +36,7 @@ export class GA4Detector extends BaseDetector {
   /**
    * Quick check for GA4 presence
    */
-  mightBePresent(context: EvidenceContext): boolean {
+  override mightBePresent(context: EvidenceContext): boolean {
     // Check for gtag.js script
     if (context.hasScriptMatching('googletagmanager.com/gtag/js')) {
       return true;
@@ -201,7 +201,7 @@ export class GA4Detector extends BaseDetector {
   ): DetectionEvidence[] {
     const evidence: DetectionEvidence[] = [];
 
-    for (const { content, script } of context.inlineScripts) {
+    for (const { content, tag } of context.inlineScripts) {
       // Look for gtag('config', 'G-XXXXX') calls
       const configMatches = content.matchAll(this.GTAG_CONFIG_PATTERN);
       for (const match of configMatches) {
@@ -215,7 +215,7 @@ export class GA4Detector extends BaseDetector {
               'gtag config call',
               id,
               CONFIDENCE.HIGH,
-              { scriptId: script.id, configCall: match[0] }
+              { scriptId: tag.id, configCall: match[0] }
             )
           );
         }
@@ -234,7 +234,7 @@ export class GA4Detector extends BaseDetector {
               'GA4 measurement ID',
               id,
               CONFIDENCE.MEDIUM,
-              { scriptId: script.id }
+              { scriptId: tag.id }
             )
           );
         }
@@ -312,7 +312,7 @@ export class GA4Detector extends BaseDetector {
    */
   private detectCookies(
     context: EvidenceContext,
-    measurementIds: Set<string>
+    _measurementIds: Set<string>
   ): DetectionEvidence[] {
     const evidence: DetectionEvidence[] = [];
 

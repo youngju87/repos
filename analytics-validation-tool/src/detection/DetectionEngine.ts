@@ -218,7 +218,7 @@ export class DetectionEngine {
     const merged: TagInstance[] = [];
 
     // Merge instances for each platform
-    for (const [platform, platformInstances] of byPlatform) {
+    for (const [_platform, platformInstances] of byPlatform) {
       if (platformInstances.length === 1) {
         merged.push(platformInstances[0]);
       } else {
@@ -328,7 +328,8 @@ export class DetectionEngine {
     };
 
     // Determine load method (prefer more specific)
-    const loadMethod = this.selectBestLoadMethod(instances.map((i) => i.loadMethod));
+    const _loadMethod = this.selectBestLoadMethod(instances.map((i) => i.loadMethod));
+    void _loadMethod; // Reserved for future use in determining tag loading behavior
 
     return {
       ...base,

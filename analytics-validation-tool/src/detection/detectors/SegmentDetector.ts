@@ -15,7 +15,6 @@ import type {
   DetectionEvidence,
   TagConfiguration,
 } from '../types';
-import { extractQueryParams, parsePayload } from '../EvidenceExtractor';
 
 export class SegmentDetector extends BaseDetector {
   readonly id = 'segment';
@@ -23,7 +22,7 @@ export class SegmentDetector extends BaseDetector {
   readonly platform = 'segment' as const;
   readonly category = 'cdp' as const;
   readonly version = '1.0.0';
-  readonly priority = 75;
+  override readonly priority = 75;
 
   // Segment patterns
   private readonly SEGMENT_CDN_PATTERN = /cdn\.segment\.(com|io)/i;
@@ -37,7 +36,7 @@ export class SegmentDetector extends BaseDetector {
   /**
    * Quick check for Segment presence
    */
-  mightBePresent(context: EvidenceContext): boolean {
+  override mightBePresent(context: EvidenceContext): boolean {
     // Check for Segment CDN script
     if (context.hasScriptMatching('cdn.segment')) {
       return true;
@@ -201,7 +200,7 @@ export class SegmentDetector extends BaseDetector {
   ): DetectionEvidence[] {
     const evidence: DetectionEvidence[] = [];
 
-    for (const { content, script } of context.inlineScripts) {
+    for (const { content, tag } of context.inlineScripts) {
       // Detect analytics.load('WRITE_KEY')
       const loadMatch = content.match(this.ANALYTICS_LOAD_PATTERN);
       if (loadMatch) {
@@ -215,7 +214,7 @@ export class SegmentDetector extends BaseDetector {
               'analytics.load call',
               key,
               CONFIDENCE.HIGH,
-              { scriptId: script.id, writeKey: key }
+              { scriptId: tag.id, writeKey: key }
             )
           );
         }
@@ -233,7 +232,7 @@ export class SegmentDetector extends BaseDetector {
             `analytics.${method} call`,
             method,
             CONFIDENCE.MEDIUM,
-            { scriptId: script.id, method }
+            { scriptId: tag.id, method }
           )
         );
       }
@@ -250,7 +249,7 @@ export class SegmentDetector extends BaseDetector {
             'Segment installation snippet',
             'segment snippet',
             CONFIDENCE.MEDIUM,
-            { scriptId: script.id }
+            { scriptId: tag.id }
           )
         );
       }

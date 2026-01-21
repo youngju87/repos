@@ -40,15 +40,27 @@ export class Timer {
   private startTime: number;
   private endTime?: number;
   private marks: Map<string, number> = new Map();
+  private maxMarks: number;
 
-  constructor() {
+  constructor(maxMarks: number = 1000) {
     this.startTime = performance.now();
+    this.maxMarks = maxMarks;
   }
 
   /**
    * Mark a point in time with a label
+   *
+   * Note: Marks are bounded to prevent memory leaks. If maxMarks is exceeded,
+   * the oldest mark will be removed.
    */
   mark(label: string): void {
+    // Remove oldest mark if at capacity
+    if (this.marks.size >= this.maxMarks && !this.marks.has(label)) {
+      const firstKey = this.marks.keys().next().value;
+      if (firstKey !== undefined) {
+        this.marks.delete(firstKey);
+      }
+    }
     this.marks.set(label, performance.now());
   }
 
@@ -90,6 +102,20 @@ export class Timer {
       result[label] = Math.round(time - this.startTime);
     }
     return result;
+  }
+
+  /**
+   * Get the number of marks currently stored
+   */
+  getMarkCount(): number {
+    return this.marks.size;
+  }
+
+  /**
+   * Clear all marks
+   */
+  clearMarks(): void {
+    this.marks.clear();
   }
 
   /**

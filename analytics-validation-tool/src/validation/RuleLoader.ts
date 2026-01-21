@@ -11,7 +11,6 @@ import type {
   AnyRuleDef,
   RuleSource,
   RuleLoaderOptions,
-  Environment,
 } from './types';
 
 /**

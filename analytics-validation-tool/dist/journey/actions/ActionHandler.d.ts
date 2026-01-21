@@ -1,0 +1,49 @@
+/**
+ * Action Handler Base Class
+ *
+ * Base class for all journey action handlers.
+ */
+import type { Page } from 'playwright';
+import type { JourneyAction, ActionResult } from '../types';
+/**
+ * Action handler interface
+ */
+export interface ActionHandler<T extends JourneyAction = JourneyAction> {
+    /** Action type this handler supports */
+    readonly type: string;
+    /** Execute the action */
+    execute(action: T, page: Page, context: Record<string, unknown>): Promise<ActionResult>;
+    /** Check if this handler can handle the action */
+    canHandle(action: JourneyAction): action is T;
+}
+/**
+ * Base action handler with common functionality
+ */
+export declare abstract class BaseActionHandler<T extends JourneyAction> implements ActionHandler<T> {
+    abstract readonly type: string;
+    /**
+     * Execute the action
+     */
+    abstract execute(action: T, page: Page, context: Record<string, unknown>): Promise<ActionResult>;
+    /**
+     * Check if this handler can handle the action
+     */
+    canHandle(action: JourneyAction): action is T;
+    /**
+     * Create a success result
+     */
+    protected createSuccessResult(action: T, duration: number, context?: Record<string, unknown>): ActionResult;
+    /**
+     * Create a failure result
+     */
+    protected createFailureResult(action: T, duration: number, error: Error | string): ActionResult;
+    /**
+     * Create a skipped result
+     */
+    protected createSkippedResult(action: T, reason: string): ActionResult;
+    /**
+     * Get timeout for action
+     */
+    protected getTimeout(action: T, defaultTimeout?: number): number;
+}
+//# sourceMappingURL=ActionHandler.d.ts.map

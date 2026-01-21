@@ -103,48 +103,53 @@ export class ValidationEngine {
         continue;
       }
 
-      rulesLoaded.push(rule.id);
+      // Keep a reference for use in catch block
+      const currentRule = rule as AnyRuleDef;
+      rulesLoaded.push(currentRule.id);
 
       try {
         // Check if rule conditions apply
-        if (rule.conditions && rule.conditions.length > 0) {
+        if (currentRule.conditions && currentRule.conditions.length > 0) {
           // Rules can have conditions on the context itself
           // For now, we'll skip condition checking on the context
           // In a full implementation, you could check environment, platform filters, etc.
         }
 
         // Find handler for rule type
-        const handler = this.config.handlers.get(rule.type);
+        const handler = this.config.handlers.get(currentRule.type);
         if (!handler) {
           ruleErrors.push({
-            ruleId: rule.id,
-            error: `No handler registered for rule type: ${rule.type}`,
+            ruleId: currentRule.id,
+            error: `No handler registered for rule type: ${currentRule.type}`,
           });
           if (this.config.debug) {
             console.error(
-              `[ValidationEngine] No handler for rule type: ${rule.type}`
+              `[ValidationEngine] No handler for rule type: ${currentRule.type}`
             );
           }
           continue;
         }
 
         // Check if handler can handle this rule
-        if (!handler.canHandle(rule)) {
+        // Use type assertion to avoid narrowing to 'never' in the negative branch
+        if (!(handler.canHandle as (r: AnyRuleDef) => boolean)(currentRule)) {
           ruleErrors.push({
-            ruleId: rule.id,
-            error: `Handler ${rule.type} cannot handle rule ${rule.id}`,
+            ruleId: currentRule.id,
+            error: `Handler ${currentRule.type} cannot handle rule ${currentRule.id}`,
           });
           continue;
         }
+        // Rule passed handler check
+        const ruleForHandler = currentRule;
 
         // Execute rule with timeout
         if (this.config.debug) {
-          console.log(`[ValidationEngine] Evaluating rule: ${rule.id}`);
+          console.log(`[ValidationEngine] Evaluating rule: ${ruleForHandler.id}`);
         }
 
         const ruleResults = await this.executeRuleWithTimeout(
           handler,
-          rule,
+          ruleForHandler,
           context
         );
 
@@ -153,7 +158,7 @@ export class ValidationEngine {
         if (this.config.debug) {
           ruleResults.forEach((result) => {
             console.log(
-              `[ValidationEngine] Rule ${rule.id}: ${result.status} - ${result.message}`
+              `[ValidationEngine] Rule ${ruleForHandler.id}: ${result.status} - ${result.message}`
             );
           });
         }
@@ -161,12 +166,12 @@ export class ValidationEngine {
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         ruleErrors.push({
-          ruleId: rule.id,
+          ruleId: currentRule.id,
           error: errorMessage,
         });
 
         if (this.config.debug) {
-          console.error(`[ValidationEngine] Error in rule ${rule.id}:`, error);
+          console.error(`[ValidationEngine] Error in rule ${currentRule.id}:`, error);
         }
 
         if (!this.config.continueOnError) {

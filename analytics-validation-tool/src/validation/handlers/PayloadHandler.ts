@@ -5,7 +5,7 @@
  */
 
 import { parseQueryString } from '../../core/utils/serialization';
-import { getNestedValue, evaluateCondition } from '../ValidationContext';
+import { getNestedValue } from '../ValidationContext';
 import type {
   PayloadRuleDef,
   ValidationContext,
@@ -63,7 +63,6 @@ export class PayloadHandler implements RuleTypeHandler<PayloadRuleDef> {
       }
 
       // Validate each matching request
-      const results: ValidationResult[] = [];
       const failedRequests: Array<{ url: string; failures: string[] }> = [];
 
       for (const request of filtered) {

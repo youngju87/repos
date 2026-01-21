@@ -1,21 +1,41 @@
 {% comment %}
 /**
  * JY Insights - Shopify Privacy API + Consent Mode Integration
- * Version: 2.1 (Optimized & Configurable)
- * Last Updated: 2026-01-12
+ * Version: 2.2 (GPC Compliance & CPRA Best Practices)
+ * Last Updated: 2026-01-20
  *
- * WHAT'S NEW IN v2.1:
- * - Removed unnecessary event listeners (down to 1 official event)
- * - Configurable polling interval (default: 2 seconds, was 500ms)
- * - Quiet logging - only logs when consent actually changes
- * - Config toggle: sale_of_data can follow marketing or use Shopify logic
- * - Much more efficient and less noisy
+ * KEY UPDATES IN v2.2:
+ * - GPC correctly allows analytics while blocking sale/sharing only (CPRA compliant)
+ * - ad_user_data and ad_personalization now follow sale_of_data (not marketing)
+ * - GPC checked on EVERY consent update (persistent override)
+ * - Improved dataLayer events with GPC state tracking
+ * - sessionStorage includes GPC status for checkout pixel
  *
- * KEY FEATURES:
- * - Uses modern Shopify.customerPrivacy.currentVisitorConsent() API
- * - No token decoding - direct API access
- * - Event-driven with optional backup polling
- * - Configurable sale_of_data behavior
+ * FEATURES:
+ * - Reads from Shopify.customerPrivacy.currentVisitorConsent() API
+ * - Maps marketing consent → sale_of_data (configurable)
+ * - GPC/DNT honored as immutable override for sale/sharing
+ * - Google Consent Mode v2 via gtag()
+ * - sessionStorage for checkout pixel
+ * - Event-driven + optional polling
+ *
+ * GPC BEHAVIOR (CPRA Compliant):
+ * - GPC ONLY blocks: sale_of_data, ad_user_data, ad_personalization
+ * - GPC does NOT block: analytics_storage (first-party analytics allowed)
+ * - GPC checked on every consent update (not just init)
+ * - GPC overrides banner choices for sale/sharing
+ *
+ * CONSENT MAPPING:
+ * - analytics → analytics_storage
+ * - marketing → ad_storage
+ * - sale_of_data → ad_user_data, ad_personalization (GPC override applies)
+ * - preferences → personalization_storage
+ *
+ * SHOPIFY API ALIGNMENT:
+ * - When saleOfDataFollowsMarketing=true: marketing='yes' → internal sale_of_data=true
+ * - Shopify's raw sale_of_data may be '' (empty) - this is expected
+ * - Apps calling saleOfDataAllowed() will return true when sale_of_data=''
+ * - Our internal mapping ensures Google Consent Mode gets correct values
  *
  * REQUIREMENTS:
  * 1. Add loadFeatures script BEFORE this in theme.liquid:
@@ -28,14 +48,12 @@
  *      }
  *    </script>
  *
- * 2. Then add this snippet:
- *    {% render 'shopify-privacy-consent-mode-v2.0-modern-api' %}
- *    {% render 'gold-storefront-datalayer-GA4-enhanced' %}
+ * 2. Render this snippet in theme.liquid
  *
  * CONFIGURATION:
- * - saleOfDataFollowsMarketing: true/false - tie sale_of_data to marketing
- * - pollingInterval: milliseconds (0 to disable polling)
- * - debug: true/false - enable console logging
+ * - saleOfDataFollowsMarketing: true = marketing → sale_of_data (standard)
+ * - pollingInterval: milliseconds (0 to disable)
+ * - debug: true/false
  */
 {% endcomment %}
 
@@ -49,19 +67,17 @@
 
   var CONFIG = {
     debug: true,
-    version: '2.1',
+    version: '2.2',
 
-    // Sale of Data Behavior
-    // Set to true: sale_of_data follows marketing consent (both granted/denied together)
-    // Set to false: sale_of_data uses Shopify's independent logic (CCPA opt-out based)
+    // When true: marketing consent → sale_of_data
+    // Standard for cross-context behavioral advertising under CPRA
     saleOfDataFollowsMarketing: true,
 
-    // Primary Shopify consent event (only one documented)
+    // Shopify consent event
     consentEvent: 'visitorConsentCollected',
 
-    // Polling interval (ms) - backup mechanism to catch changes
-    // Set to 0 to disable polling (event-only mode)
-    pollingInterval: 2000,  // Check every 2 seconds instead of 500ms
+    // Polling interval (ms) - 0 to disable
+    pollingInterval: 2000,
 
     defaultConsent: {
       analytics_storage: 'denied',
@@ -78,20 +94,17 @@
   var consentInitialized = false;
 
   // ==========================================================================
-  // IMMEDIATE CONSENT INITIALIZATION (for GTM)
+  // IMMEDIATE CONSENT INITIALIZATION (before GTM loads)
   // ==========================================================================
 
-  // GTM needs consent set BEFORE it loads, so we set defaults immediately
-  // This will be updated later when Shopify API provides stored consent
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
 
-  // Set GTM consent defaults (for GTM's Consent tab)
+  // Set consent defaults immediately
   gtag('consent', 'default', Object.assign({}, CONFIG.defaultConsent, {
     wait_for_update: 500
   }));
 
-  // Also push consent_default event to dataLayer (for GTM's Data Layer tab)
   window.dataLayer.push({
     event: 'consent_default',
     consent_state: CONFIG.defaultConsent,
@@ -102,22 +115,20 @@
     consent_source: 'default'
   });
 
-  // Save default consent to sessionStorage for checkout pixel (will be updated when user grants consent)
+  // Initialize sessionStorage for checkout pixel
   try {
-    // Only set defaults if no consent is already stored (don't overwrite returning user's consent)
     if (!sessionStorage.getItem('jy_consent_state')) {
       sessionStorage.setItem('jy_consent_state', JSON.stringify({
         analytics: false,
         marketing: false,
         preferences: false,
         sale_of_data: false,
+        gpc_active: false,
         timestamp: Date.now(),
         source: 'default'
       }));
     }
-  } catch (e) {
-    // sessionStorage not available
-  }
+  } catch (e) {}
 
   // ==========================================================================
   // LOGGING
@@ -125,30 +136,24 @@
 
   function log() {
     if (CONFIG.debug && typeof console !== 'undefined') {
-      console.log('[Shopify Consent v2.0]', Array.prototype.slice.call(arguments).join(' '));
+      console.log('[Consent v' + CONFIG.version + ']', Array.prototype.slice.call(arguments).join(' '));
     }
   }
 
   // ==========================================================================
-  // GOOGLE CONSENT MODE v2
+  // GPC DETECTION
   // ==========================================================================
 
-  function initializeGoogleConsentDefaults() {
-    log('🚀 Initializing Google Consent Mode v2 for new user');
-
-    // Note: consent_default event and gtag('consent', 'default') already called at line 90-103
-    // This function is only called for NEW users (no stored consent)
-    // Nothing to do here - defaults already set at top level
-
-    log('✅ Consent defaults already initialized (using denied defaults from line 90)');
-  }
-
-  function initializeMicrosoftConsent() {
-    window.microsoftConsentState = {
-      analytics: false,
-      advertising: false
-    };
-    log('✅ Microsoft consent initialized');
+  /**
+   * Check for Global Privacy Control or Do Not Track signals
+   *
+   * Per CPRA: GPC is a legally binding "Do Not Sell or Share" signal
+   * It does NOT mean "Do Not Track" - first-party analytics are still allowed
+   */
+  function checkGPC() {
+    return (navigator.globalPrivacyControl === true) ||
+           (navigator.doNotTrack === '1') ||
+           (window.doNotTrack === '1');
   }
 
   // ==========================================================================
@@ -157,49 +162,38 @@
 
   function getConsentFromShopify() {
     try {
-      if (!window.Shopify || !window.Shopify.customerPrivacy) {
-        log('⚠️ Shopify.customerPrivacy not available');
-        return null;
-      }
-
-      if (typeof window.Shopify.customerPrivacy.currentVisitorConsent !== 'function') {
-        log('⚠️ currentVisitorConsent() method not available');
+      if (!window.Shopify?.customerPrivacy?.currentVisitorConsent) {
         return null;
       }
 
       var consent = window.Shopify.customerPrivacy.currentVisitorConsent();
 
-      // Check if we have actual consent values (not empty strings)
+      // No consent collected yet
       if (!consent || (consent.analytics === '' && consent.marketing === '' && consent.preferences === '')) {
-        log('⚠️ No consent collected yet');
         return null;
       }
 
-      var analyticsGranted = consent.analytics === 'yes';
-      var marketingGranted = consent.marketing === 'yes';
-      var preferencesGranted = consent.preferences === 'yes';
+      var analytics = consent.analytics === 'yes';
+      var marketing = consent.marketing === 'yes';
+      var preferences = consent.preferences === 'yes';
 
       // Determine sale_of_data based on config
-      var saleOfDataGranted;
-      if (CONFIG.saleOfDataFollowsMarketing) {
-        // Mirror marketing consent
-        saleOfDataGranted = marketingGranted;
-      } else {
-        // Use Shopify's independent logic (CCPA opt-out based)
-        saleOfDataGranted = consent.sale_of_data !== 'no';
-      }
+      // NOTE: Shopify's raw consent.sale_of_data is often '' (empty string)
+      // This is expected for US visitors without explicit CCPA opt-out UI
+      var saleOfData = CONFIG.saleOfDataFollowsMarketing
+        ? marketing  // Map marketing → sale_of_data
+        : (consent.sale_of_data !== 'no');  // Use Shopify's independent value
 
       return {
-        analytics: analyticsGranted,
-        marketing: marketingGranted,
-        preferences: preferencesGranted,
-        sale_of_data: saleOfDataGranted,
+        analytics: analytics,
+        marketing: marketing,
+        preferences: preferences,
+        sale_of_data: saleOfData,
         source: 'shopify_api',
-        rawConsent: consent
+        rawShopify: consent  // Keep raw values for debugging
       };
-
     } catch (e) {
-      log('❌ Error getting consent:', e);
+      log('Error reading consent:', e);
       return null;
     }
   }
@@ -208,402 +202,253 @@
   // CONSENT UPDATES
   // ==========================================================================
 
-  function mapShopifyToGoogleConsent(consent) {
-    if (!consent) {
-      return CONFIG.defaultConsent;
-    }
+  /**
+   * Map Shopify consent to Google Consent Mode v2
+   *
+   * IMPORTANT: ad_user_data and ad_personalization follow sale_of_data (not marketing)
+   * This is correct because they control cross-context data sharing (CPRA regulated)
+   */
+  function mapToGoogleConsent(consent, gpcActive) {
+    if (!consent) return CONFIG.defaultConsent;
+
+    // GPC overrides sale_of_data (legally required)
+    // User can still grant analytics/marketing, but sale/sharing blocked
+    var effectiveSaleOfData = gpcActive ? false : consent.sale_of_data;
 
     return {
       'analytics_storage': consent.analytics ? 'granted' : 'denied',
       'ad_storage': consent.marketing ? 'granted' : 'denied',
-      'ad_user_data': consent.marketing ? 'granted' : 'denied',
-      'ad_personalization': consent.marketing ? 'granted' : 'denied',
+      'ad_user_data': effectiveSaleOfData ? 'granted' : 'denied',      // Follows sale_of_data
+      'ad_personalization': effectiveSaleOfData ? 'granted' : 'denied', // Follows sale_of_data
       'personalization_storage': consent.preferences ? 'granted' : 'denied',
       'functionality_storage': 'granted',
       'security_storage': 'granted'
     };
   }
 
-  function updateGoogleConsent(consent) {
-    var consentState = mapShopifyToGoogleConsent(consent);
+  function updateGoogleConsent(consent, gpcActive) {
+    var consentState = mapToGoogleConsent(consent, gpcActive);
+    var effectiveSaleOfData = gpcActive ? false : consent.sale_of_data;
 
-    log('🔄 Updating Google Consent:',
-        'analytics=' + consentState.analytics_storage,
-        'ads=' + consentState.ad_storage);
-
-    // Call gtag directly (defined at line 87)
     gtag('consent', 'update', consentState);
-    log('✅ gtag("consent", "update") called');
 
-    if (typeof window.dataLayer !== 'undefined') {
-      window.dataLayer.push({
-        event: 'consent_updated',
-        consent_state: consentState,
-        analytics_consent: consent ? consent.analytics : false,
-        marketing_consent: consent ? consent.marketing : false,
-        preferences_consent: consent ? consent.preferences : false,
-        sale_of_data_consent: consent ? consent.sale_of_data : false,
-        consent_source: consent ? consent.source : 'default'
-      });
-      log('✅ consent_updated event pushed to dataLayer');
-    } else {
-      log('⚠️ dataLayer not available');
-    }
+    window.dataLayer.push({
+      event: 'consent_updated',
+      consent_state: consentState,
+      analytics_consent: consent.analytics,
+      marketing_consent: consent.marketing,
+      preferences_consent: consent.preferences,
+      sale_of_data_consent: effectiveSaleOfData,
+      sale_of_data_banner: consent.sale_of_data,  // What banner/config says
+      sale_of_data_effective: effectiveSaleOfData, // After GPC override
+      gpc_detected: gpcActive,
+      gpc_override_applied: gpcActive && consent.sale_of_data, // GPC blocked granted consent
+      consent_source: consent.source
+    });
+
+    log('Google consent updated:',
+        'analytics=' + consentState.analytics_storage,
+        'ads=' + consentState.ad_storage,
+        'ad_user_data=' + consentState.ad_user_data,
+        gpcActive ? '(GPC ACTIVE)' : '');
   }
 
   function updateMicrosoftConsent(consent) {
-    var analyticsGranted = consent ? consent.analytics : false;
-    var marketingGranted = consent ? consent.marketing : false;
-
     window.microsoftConsentState = {
-      analytics: analyticsGranted,
-      advertising: marketingGranted
+      analytics: consent ? consent.analytics : false,
+      advertising: consent ? consent.marketing : false
     };
 
-    if (typeof window.dataLayer !== 'undefined') {
-      window.dataLayer.push({
-        event: 'microsoft_consent_updated',
-        microsoft_analytics_consent: analyticsGranted,
-        microsoft_advertising_consent: marketingGranted
-      });
-    }
-
-    log('✅ Microsoft consent updated');
+    window.dataLayer.push({
+      event: 'microsoft_consent_updated',
+      microsoft_analytics_consent: window.microsoftConsentState.analytics,
+      microsoft_advertising_consent: window.microsoftConsentState.advertising
+    });
   }
 
-  function updateAllConsentModes(consent) {
-    if (!consent) {
-      log('⚠️ No consent to update');
-      return;
-    }
-
-    log('🔄 Updating all consent modes');
-    updateGoogleConsent(consent);
-    updateMicrosoftConsent(consent);
-    consentInitialized = true;
-
-    // Save consent to sessionStorage for checkout pixel
-    // Checkout runs in sandboxed iframe and can't access Shopify's customerPrivacy API
-    saveConsentToSessionStorage(consent);
-  }
-
-  /**
-   * Save consent state to sessionStorage for checkout pixel
-   * The checkout pixel runs in a sandboxed iframe without access to Shopify's
-   * customerPrivacy API, so we pass consent state via sessionStorage
-   */
-  function saveConsentToSessionStorage(consent) {
+  function saveToSessionStorage(consent, gpcActive) {
     try {
-      var consentData = {
+      var effectiveSaleOfData = gpcActive ? false : consent.sale_of_data;
+      sessionStorage.setItem('jy_consent_state', JSON.stringify({
         analytics: consent.analytics || false,
         marketing: consent.marketing || false,
         preferences: consent.preferences || false,
-        sale_of_data: consent.sale_of_data || false,
+        sale_of_data: effectiveSaleOfData,
+        gpc_active: gpcActive,
         timestamp: Date.now(),
         source: consent.source || 'unknown'
-      };
-      sessionStorage.setItem('jy_consent_state', JSON.stringify(consentData));
-      log('✅ Consent saved to sessionStorage for checkout pixel');
-    } catch (e) {
-      log('⚠️ Could not save consent to sessionStorage:', e);
+      }));
+    } catch (e) {}
+  }
+
+  function updateAllConsent(consent) {
+    if (!consent) return;
+
+    // CRITICAL: Check GPC on EVERY consent update
+    // GPC is an immutable override, not a one-time check
+    var gpcActive = checkGPC();
+
+    if (gpcActive) {
+      log('GPC active - sale_of_data forced to denied');
     }
+
+    updateGoogleConsent(consent, gpcActive);
+    updateMicrosoftConsent(consent);
+    saveToSessionStorage(consent, gpcActive);
+    consentInitialized = true;
   }
 
   // ==========================================================================
-  // EVENT-DRIVEN MONITORING
+  // EVENT MONITORING
   // ==========================================================================
 
   function handleConsentChange() {
     var consent = getConsentFromShopify();
+    if (!consent) return;
 
-    if (!consent) {
-      return;
+    var stateSignature = [consent.analytics, consent.marketing, consent.preferences, consent.sale_of_data].join('|');
+
+    if (stateSignature !== lastConsentState) {
+      log('Consent changed:', stateSignature);
+      log('  Analytics:', consent.analytics);
+      log('  Marketing:', consent.marketing);
+      log('  Preferences:', consent.preferences);
+      log('  Sale of data:', consent.sale_of_data, CONFIG.saleOfDataFollowsMarketing ? '(follows marketing)' : '(independent)');
+
+      lastConsentState = stateSignature;
+      updateAllConsent(consent);
     }
-
-    // Create state signature to detect changes
-    var currentState = consent.analytics + '|' + consent.marketing + '|' + consent.preferences + '|' + consent.sale_of_data;
-
-    if (currentState !== lastConsentState) {
-      log('🔔 Consent changed:', lastConsentState || 'initial', '->', currentState);
-      log('📊 Values:',
-          'analytics=' + consent.analytics,
-          'marketing=' + consent.marketing,
-          'preferences=' + consent.preferences,
-          'sale_of_data=' + consent.sale_of_data,
-          (CONFIG.saleOfDataFollowsMarketing ? '(following marketing)' : '(independent)'));
-      lastConsentState = currentState;
-      updateAllConsentModes(consent);
-    }
-  }
-
-  function setupEventListeners() {
-    log('👂 Setting up event listener for:', CONFIG.consentEvent);
-
-    // Listen for the official Shopify consent event
-    document.addEventListener(CONFIG.consentEvent, function(e) {
-      log('🔔 Event fired:', CONFIG.consentEvent);
-      handleConsentChange();
-    });
-
-    log('✅ Event listener active');
-  }
-
-  // ==========================================================================
-  // GPC DETECTION
-  // ==========================================================================
-
-  function checkGlobalPrivacyControl() {
-    if (typeof navigator.globalPrivacyControl !== 'undefined' && navigator.globalPrivacyControl === true) {
-      log('🚫 GPC Signal Detected');
-      return true;
-    }
-
-    if (navigator.doNotTrack === '1' || window.doNotTrack === '1') {
-      log('🚫 DNT Signal Detected');
-      return true;
-    }
-
-    return false;
-  }
-
-  function handleGPCSignal() {
-    var hasGPCSignal = checkGlobalPrivacyControl();
-    if (hasGPCSignal) {
-      log('Auto-denying consent per GPC/DNT');
-      updateAllConsentModes({
-        analytics: false,
-        marketing: false,
-        preferences: false,
-        sale_of_data: false,
-        source: 'gpc'
-      });
-
-      if (typeof window.dataLayer !== 'undefined') {
-        window.dataLayer.push({
-          event: 'consent_gpc_detected',
-          gpc_signal: true,
-          consent_auto_denied: true
-        });
-      }
-
-      return true;
-    }
-    return false;
   }
 
   // ==========================================================================
   // INITIALIZATION
   // ==========================================================================
 
-  function waitForShopifyAPI(callback, maxWait) {
+  function waitForShopifyAPI(callback) {
     var startTime = Date.now();
-    var maxWaitTime = maxWait || 10000;
+    var maxWait = 10000;
 
-    log('⏳ Waiting for Shopify Customer Privacy API...');
-
-    var checkInterval = setInterval(function() {
-      var hasShopify = typeof window.Shopify !== 'undefined';
-      var hasPrivacy = hasShopify && typeof window.Shopify.customerPrivacy !== 'undefined';
-      var hasMethod = hasPrivacy && typeof window.Shopify.customerPrivacy.currentVisitorConsent === 'function';
-
-      if (hasMethod) {
-        clearInterval(checkInterval);
-        var elapsed = Date.now() - startTime;
-        log('✅ API ready after', elapsed + 'ms');
+    var interval = setInterval(function() {
+      if (window.Shopify?.customerPrivacy?.currentVisitorConsent) {
+        clearInterval(interval);
+        log('Shopify API ready after', (Date.now() - startTime) + 'ms');
         callback(true);
-      } else if (Date.now() - startTime > maxWaitTime) {
-        clearInterval(checkInterval);
-        log('⏱️ Timeout after', maxWaitTime + 'ms');
-        log('  - Has Shopify?', hasShopify);
-        log('  - Has customerPrivacy?', hasPrivacy);
-        log('  - Has currentVisitorConsent()?', hasMethod);
+      } else if (Date.now() - startTime > maxWait) {
+        clearInterval(interval);
+        log('Shopify API timeout');
         callback(false);
       }
     }, 100);
   }
 
   function init() {
-    log('🚀 Initializing v' + CONFIG.version);
+    log('Initializing...');
 
-    // Check for GPC first
-    if (handleGPCSignal()) {
-      log('GPC/DNT detected - consent denied');
-      // Still initialize consent modes with denied state
-      initializeGoogleConsentDefaults();
-      initializeMicrosoftConsent();
-      return;
+    // Log GPC status (but don't exit early)
+    var gpcDetected = checkGPC();
+    if (gpcDetected) {
+      log('GPC/DNT detected - will enforce on all consent updates');
+      log('Note: GPC blocks sale/sharing only. Analytics can still be granted.');
+      window.dataLayer.push({
+        event: 'consent_gpc_detected',
+        gpc_signal: true,
+        gpc_effect: 'sale_of_data_blocked'
+      });
     }
 
-    // Wait for Shopify API to be ready BEFORE setting consent defaults
     waitForShopifyAPI(function(ready) {
       if (!ready) {
-        log('⚠️ Shopify Customer Privacy API not available');
-        // Fallback: initialize with defaults
-        initializeGoogleConsentDefaults();
-        initializeMicrosoftConsent();
+        log('Using default consent (API unavailable)');
+        window.microsoftConsentState = { analytics: false, advertising: false };
         return;
       }
 
-      log('✅ Shopify Customer Privacy API ready');
-
-      // Wait a moment for consent values to be fully loaded
-      // Sometimes API is ready but values aren't populated yet
+      // Small delay for consent values to populate
       setTimeout(function() {
-        // Get initial consent (from cookie for returning users)
-        var initialConsent = getConsentFromShopify();
+        var consent = getConsentFromShopify();
 
-        if (initialConsent) {
-          // RETURNING USER: Update consent to stored values
-          log('✅ Initial consent found (returning user or already granted)');
+        if (consent) {
+          log('Found stored consent');
+          lastConsentState = [consent.analytics, consent.marketing, consent.preferences, consent.sale_of_data].join('|');
+          consent.source = 'stored';
 
-          // Set the initial state signature
-          lastConsentState = initialConsent.analytics + '|' + initialConsent.marketing + '|' +
-                            initialConsent.preferences + '|' + initialConsent.sale_of_data;
+          // Use updateAllConsent which checks GPC on every call
+          updateAllConsent(consent);
 
-          // Initialize Microsoft consent
-          initializeMicrosoftConsent();
-
-          // Update consent to stored values (defaults already set to 'denied' at line 89)
-          var storedConsentDefaults = mapShopifyToGoogleConsent(initialConsent);
-
-          // Update gtag consent immediately using the gtag function defined at line 87
-          // The gtag function pushes to dataLayer, which GTM will process
-          log('🔄 Updating consent to stored values...');
-
-          // Call gtag to update consent state (this pushes to dataLayer)
-          gtag('consent', 'update', storedConsentDefaults);
-          log('✅ gtag("consent", "update") called');
-
-          // Also push consent_updated event to dataLayer
-          window.dataLayer.push({
-            event: 'consent_updated',
-            consent_state: storedConsentDefaults,
-            analytics_consent: initialConsent.analytics,
-            marketing_consent: initialConsent.marketing,
-            preferences_consent: initialConsent.preferences,
-            sale_of_data_consent: initialConsent.sale_of_data,
-            consent_source: 'stored'
-          });
-          log('✅ consent_updated event pushed to dataLayer');
-
-          // Update Microsoft consent too
-          updateMicrosoftConsent(initialConsent);
-
-          consentInitialized = true;
-
-          log('📊 Loaded consent:',
-              'analytics=' + initialConsent.analytics,
-              'marketing=' + initialConsent.marketing,
-              'preferences=' + initialConsent.preferences,
-              'sale_of_data=' + initialConsent.sale_of_data);
+          log('Loaded consent - GPC will override if active');
         } else {
-          // NEW USER: Initialize with denied defaults
-          log('⚠️ No initial consent - setting denied defaults (GDPR-safe)');
-          initializeGoogleConsentDefaults();
-          initializeMicrosoftConsent();
+          log('No consent yet - using defaults');
+          window.microsoftConsentState = { analytics: false, advertising: false };
         }
 
-        // Set up event-driven monitoring
-        setupEventListeners();
+        // Event listener
+        document.addEventListener(CONFIG.consentEvent, function() {
+          log('Consent event fired');
+          handleConsentChange();
+        });
 
-        // Optional polling as backup
+        // Optional polling
         if (CONFIG.pollingInterval > 0) {
-          log('👁️ Polling enabled (every ' + CONFIG.pollingInterval + 'ms)');
           setInterval(handleConsentChange, CONFIG.pollingInterval);
-        } else {
-          log('📡 Event-only mode (no polling)');
         }
 
-        log('✅ Monitoring active');
-      }, 200); // Wait 200ms for consent values to populate
+        log('Ready');
+      }, 200);
     });
 
-    // Expose debug functions
+    // Debug API
     if (CONFIG.debug) {
       window.consentDebug = {
-        getConsent: function() {
+        getRawShopify: function() {
           return window.Shopify?.customerPrivacy?.currentVisitorConsent();
         },
-        checkNow: handleConsentChange,
-        currentState: function() {
+        getParsedConsent: function() {
+          return getConsentFromShopify();
+        },
+        getState: function() {
+          var gpc = checkGPC();
+          var consent = getConsentFromShopify();
           return {
-            shopify: getConsentFromShopify(),
+            consent: consent,
+            gpc_active: gpc,
+            effective_sale_of_data: gpc ? false : (consent ? consent.sale_of_data : false),
             initialized: consentInitialized,
-            lastState: lastConsentState
+            config: {
+              saleOfDataFollowsMarketing: CONFIG.saleOfDataFollowsMarketing
+            }
           };
         },
-        grant: function() {
-          // Simulate granting all consent
-          updateAllConsentModes({
-            analytics: true,
-            marketing: true,
-            preferences: true,
-            sale_of_data: true,
-            source: 'manual'
-          });
-        },
-        deny: function() {
-          updateAllConsentModes({
-            analytics: false,
-            marketing: false,
-            preferences: false,
-            sale_of_data: false,
-            source: 'manual'
-          });
-        },
-        testAPI: function() {
-          log('=== API Test ===');
-          log('Config: saleOfDataFollowsMarketing =', CONFIG.saleOfDataFollowsMarketing);
-          log('Shopify.customerPrivacy:', window.Shopify?.customerPrivacy);
+        checkGPC: checkGPC,
+        refresh: handleConsentChange,
+        testShopifyMethods: function() {
+          log('=== Shopify API Test ===');
           log('currentVisitorConsent():', window.Shopify?.customerPrivacy?.currentVisitorConsent());
-          log('shouldShowBanner():', window.Shopify?.customerPrivacy?.shouldShowBanner());
-          log('analyticsProcessingAllowed():', window.Shopify?.customerPrivacy?.analyticsProcessingAllowed());
-          log('marketingAllowed():', window.Shopify?.customerPrivacy?.marketingAllowed());
           log('saleOfDataAllowed():', window.Shopify?.customerPrivacy?.saleOfDataAllowed());
-        },
-        setFollowMarketing: function(value) {
-          CONFIG.saleOfDataFollowsMarketing = value;
-          log('🔧 saleOfDataFollowsMarketing set to:', value);
-          handleConsentChange(); // Re-check consent with new setting
+          log('marketingAllowed():', window.Shopify?.customerPrivacy?.marketingAllowed());
+          log('analyticsProcessingAllowed():', window.Shopify?.customerPrivacy?.analyticsProcessingAllowed());
         }
       };
-      log('🛠️ Debug available at window.consentDebug');
     }
 
     // Public API
     window.shopifyConsentMode = {
       version: CONFIG.version,
-      grantConsent: function() {
-        updateAllConsentModes({
-          analytics: true,
-          marketing: true,
-          preferences: true,
-          sale_of_data: true,
-          source: 'api'
-        });
-      },
-      denyConsent: function() {
-        updateAllConsentModes({
-          analytics: false,
-          marketing: false,
-          preferences: false,
-          sale_of_data: false,
-          source: 'api'
-        });
-      },
-      getConsentState: function() {
+      getState: function() {
+        var gpc = checkGPC();
+        var consent = getConsentFromShopify();
         return {
-          shopify: getConsentFromShopify(),
+          consent: consent,
           microsoft: window.microsoftConsentState,
+          gpc_active: gpc,
+          effective_sale_of_data: gpc ? false : (consent ? consent.sale_of_data : false),
           initialized: consentInitialized
         };
-      }
+      },
+      isGPCActive: checkGPC
     };
-
-    log('✅ Ready');
   }
 
-  // Run initialization
+  // Run
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

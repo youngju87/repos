@@ -7,7 +7,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as yaml from 'yaml';
-import type { JourneyDefinition, JourneyLoaderConfig } from './types';
+import type { JourneyDefinition, JourneyLoaderConfig, JourneySource } from './types';
 
 /**
  * Journey loader result
@@ -19,14 +19,6 @@ export interface JourneyLoaderResult {
     error: string;
   }>;
 }
-
-/**
- * Journey source configuration
- */
-export type JourneySource =
-  | { type: 'file'; path: string }
-  | { type: 'directory'; path: string; pattern?: RegExp }
-  | { type: 'inline'; journey: JourneyDefinition };
 
 /**
  * Journey loader for loading journey definitions
@@ -66,12 +58,18 @@ export class JourneyLoader {
   private async loadFromSource(source: JourneySource): Promise<JourneyDefinition[]> {
     switch (source.type) {
       case 'file':
+        if (!source.path) throw new Error('File source requires path');
         return [await this.loadFromFile(source.path)];
 
       case 'directory':
-        return this.loadFromDirectory(source.path, source.pattern);
+        if (!source.path) throw new Error('Directory source requires path');
+        return this.loadFromDirectory(
+          source.path,
+          source.pattern ? new RegExp(source.pattern) : undefined
+        );
 
       case 'inline':
+        if (!source.journey) throw new Error('Inline source requires journey');
         return [source.journey];
 
       default:
@@ -196,11 +194,11 @@ export class JourneyLoader {
   private getSourceDescription(source: JourneySource): string {
     switch (source.type) {
       case 'file':
-        return `file: ${source.path}`;
+        return `file: ${source.path || 'unknown'}`;
       case 'directory':
-        return `directory: ${source.path}`;
+        return `directory: ${source.path || 'unknown'}`;
       case 'inline':
-        return `inline: ${source.journey.id}`;
+        return `inline: ${source.journey?.id || 'unknown'}`;
       default:
         return 'unknown';
     }

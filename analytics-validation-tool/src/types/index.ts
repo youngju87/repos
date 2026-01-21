@@ -175,6 +175,9 @@ export interface ScriptTag {
   /** Timestamp when script was detected */
   detectedAt: number;
 
+  /** Timestamp (alias for detectedAt) */
+  timestamp?: number;
+
   /** Timestamp when script load completed (external only) */
   loadedAt?: number;
 
@@ -466,6 +469,12 @@ export interface PageScanResult {
 
   /** Scan completion timestamp */
   completedAt: number;
+
+  /** Scan timestamp (alias for startedAt) */
+  timestamp?: number;
+
+  /** Total scan duration (ms) */
+  duration?: number;
 
   /** Page timing metrics */
   timings: PageTimings;
